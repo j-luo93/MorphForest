@@ -64,10 +64,8 @@ def evaluate(gold_seg_file, pred_seg_file, quiet=False, debug=False):
         except:
             print(line)
             import pdb; pdb.set_trace()
-    # print(1)
+
     for word in gold_segs:
-        # if word not in pred_segs: continue
-        # print(list(word))
         pred_seg = pred_segs[word]
         segs = gold_segs[word]
         res = evaluate_seg_points(pred_seg, segs)

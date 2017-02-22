@@ -12,11 +12,10 @@ import codecs
 
 class ILP(object):
 
-    def __init__(self, base, alpha, beta, order=5):
+    def __init__(self, base, alpha, beta):
         self.base = base
         self.alpha = alpha
         self.beta = beta
-        self.order = order
 
         self.pruner = {type_: set() for type_ in ['suf', 'pre', 'MODIFY', 'DELETE', 'REPEAT']}
 
@@ -24,17 +23,16 @@ class ILP(object):
         self.seeds = self.base.decompose(self.base.train_set)
 
         print('-----------------------------------', file=sys.stderr)
-        print('alpha\t\t', self.alpha)
-        print('beta\t\t', self.beta)
-        print('order\t\t', self.order)
-        print('out file\t', self.out_file)
+        print('alpha\t\t', self.alpha, file=sys.stderr)
+        print('beta\t\t', self.beta, file=sys.stderr)
+        print('out file\t', self.out_file, file=sys.stderr)
         print('-----------------------------------', file=sys.stderr)
 
     def build(self):
         self.model = Model('ILP')
         obj_coeffs = list()
         obj_vars = list()
-        # a variables for choosing which candidate
+        # X variables for choosing which candidate
         print('Setting up X variables...')
         for i, w in enumerate(self.fringe):
             print('\r%d/%d' %(i + 1, len(self.fringe)), end='')
@@ -55,7 +53,6 @@ class ILP(object):
                 pair = Pair(w, parent, type_)
                 affix, trans = pair.get_affix_and_transformation()
                 if affix:
-                    assert affix
                     name = self._get_name('z', pair.type_coarse, affix)
                     v = self.model.getVarByName(name)
                     if not v:
@@ -101,7 +98,6 @@ class ILP(object):
                 affix, trans = pair.get_affix_and_transformation()
                 if affix:
                     name = self._get_name('z', pair.type_coarse, affix)
-
                     v = self.model.getVarByName(name)
                     assert var and v , (name_var, name)
                     self.model.addConstr(var <= v, name=self._get_name('c', name_var, name))
@@ -119,8 +115,9 @@ class ILP(object):
     def _get_name(self, prefix, *args, **kwargs):
         name = prefix + '_' + '_'.join(args)
         if 'cand' not in kwargs: 
-	    if len(name) > 200: name = str(hash(name))
-	    return name
+    	    if len(name) > 200: 
+                name = str(hash(name))
+            return name
 
         parent, type_ = kwargs['cand']
         name += '_' + type_
@@ -129,7 +126,8 @@ class ILP(object):
             name += '_' + parent[0] + '_' + parent[1]
         else:
             name += '_' + parent
-	if len(name) > 200: name = str(hash(name))
+        if len(name) > 200: 
+            name = str(hash(name))
         return name
 
     def run(self):
@@ -138,23 +136,19 @@ class ILP(object):
         self.kept = defaultdict(set)
         n_iter = 0
         self.parents = dict()
-        self.fringe = set()
-        while True:
-            last_fringe = set(self.fringe)
-            self.fringe = self.get_fringe()
-            self.N = len(self.fringe)
-            if self.fringe == last_fringe or n_iter == self.order: break
-            print('-------------------------------------')
-            print('Iteration %d' %(n_iter + 1))
-            self.build()
-            self.model.params.presolve = 2  # aggressive
-            # self.model.params.presolve = 0  # no presolving
-            self.model.optimize()
-            self.kept = self.get_used_affixes_and_transformations()
-            print(zip(self.kept.keys(), map(lambda x: len(x), self.kept.values())))
-            self.parents = self._get_parents_for_fringe()
-            n_iter += 1
-            print('-------------------------------------')
+        self.fringe = self.get_fringe()
+        self.N = len(self.fringe)
+        print('-------------------------------------')
+        self.build()
+        self.model.params.presolve = 2  # aggressive
+        # self.model.params.presolve = 0  # no presolving
+        self.model.optimize()
+        self.kept = self.get_used_affixes_and_transformations()
+        print('Affixes kept:')
+        print(dict([(key, len(self.kept[key])) for key in self.kept]))
+        self.parents = self._get_parents_for_fringe()
+        n_iter += 1
+        print('-------------------------------------')
         self.update_pruner(self.kept)
 
     def _get_parents_for_fringe(self):
@@ -183,7 +177,6 @@ class ILP(object):
         return fringe
 
     def get_used_affixes_and_transformations(self):
-
         kept = defaultdict(set)
         for p in self.base.prefixes:
             name = 'z_pre_' + p
@@ -216,7 +209,8 @@ class ILP(object):
         all_['suf'] = set(self.base.suffixes)
         for key in all_:
             self.pruner[key].update(all_[key] - kept[key])
-        print([(key, len(self.pruner[key])) for key in self.pruner])
+        print('Affixes pruned:')
+        print(dict([(key, len(self.pruner[key])) for key in self.pruner]))
 
     # fall back to the base model whenever it is not available
     def predict(self, child, fall_back=True):
@@ -237,7 +231,7 @@ class ILP(object):
         raise
     
     def get_raw_features(self, child, candidate):
-	return self.base.get_raw_features(child, candidate)
+    	return self.base.get_raw_features(child, candidate)
 
     def get_seg_path(self, w):
         path = Path(w)
@@ -262,21 +256,8 @@ class ILP(object):
         with codecs.open(out_file, 'w', 'utf8', errors='strict') as fout:
             for w in wordset:
                 path = self.get_seg_path(w)
-                # path = Path(w)
-                # while not path.is_ended():
-                #     child = path.get_fringe_word()
-                #     parts = child.split("'")
-                #     if len(parts) == 2 and len(parts[0]) > 0 and self.base.lang == 'eng':
-                #         path.expand(child, parts[0], 'APOSTR')
-                #     else:
-                #         parts = child.split('-')
-                #         if len(parts) > 1:
-                #             p1, p2 = parts[0], child[len(parts[0]) + 1:]
-                #             path.expand(child, (p1, p2), 'HYPHEN')
-                #         else:
-                #             parent, type_ = self.predict(child)
-                #             path.expand(child, parent, type_)
                 fout.write(w + ':' + path.get_segmentation() + '\n')
 
     def evaluate(self):
-        evaluate(self.base.gold_segs_file, self.out_file, quiet=True)
+        p ,r, f = evaluate(self.base.gold_segs_file, self.out_file, quiet=True)
+        print('ILP: precision =', p, 'recall =', r, 'f =', f, file=sys.stderr)

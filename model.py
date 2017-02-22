@@ -25,7 +25,7 @@ from copy import deepcopy
 from evaluate import evaluate
 from SGD import Adam
 from path import Path
-from utils import Logger, update_memory, get_affix, get_transform
+from utils import Logger
 from pair import ChildParentPair as Pair
 
 class MC(object):
@@ -67,15 +67,17 @@ class MC(object):
 
         if self.DEBUG:
             self.INDUCTIVE = False
-            self.word_vector_file = self.data_path + 'wv.%s.toy' %self.lang
+            self.word_vector_file += '.toy'
+            self.wordlist_file += '.toy'
+            self.gold_segs_file += '.toy'
 
     def _get_out_path(self):
         tmp_time = localtime()
         date = strftime('%m-%d', tmp_time)
         timestamp = strftime('%H:%M:%S', tmp_time)
-        out_path = '../out/' + date + '/' + timestamp + "/"
-        if not os.path.isdir('../out'): os.mkdir('../out')
-        if not os.path.isdir('../out/' + date): os.mkdir('../out/' + date)
+        out_path = 'out/' + date + '/' + timestamp + "/"
+        if not os.path.isdir('out'): os.mkdir('out')
+        if not os.path.isdir('out/' + date): os.mkdir('out/' + date)
         if not os.path.isdir(out_path): os.mkdir(out_path)
         return out_path
 
@@ -163,9 +165,8 @@ class MC(object):
 
     def _add_words_from_gold(self):
         self.train_set.update(filter(lambda w: len(w) >= 3, self.gold_segs.keys()))
-        # self.train_set = self._decompose(self.train_set)
         print('Now %d words in training set, inductive mode.' %(len(self.train_set)), file=sys.stderr)
-
+        
     def decompose(self, s):
         if self.lang == 'eng':
             new_set = set()
@@ -179,7 +180,7 @@ class MC(object):
                     new_set.add(w)
             return new_set
         return s
-
+        
     def read_affixes(self):
         assert not hasattr(self, 'prefixes') and not hasattr(self, 'suffixes')
         self.prefixes, self.suffixes = set(), set()
@@ -201,9 +202,6 @@ class MC(object):
             self.suffixes = set([suf for suf, cnt in suf_cnt[:self.top_affixes]])
             self.prefixes = set([pre for pre, cnt in pre_cnt[:self.top_affixes]])
 
-        # self.prefixes_copy = set(self.prefixes)
-        # self.suffixes_copy = set(self.suffixes)
-            # if self.supervised: self.train_set = set() # jl
 
     # Generally, lowercasing shouldn't happen here.
     def _standardize(self, word):
@@ -237,33 +235,7 @@ class MC(object):
             return output
         else:
             raise NotImplementedError
-    #
 
-    # def reset_wordlist(self, top_words):
-    #     self.word_cnt = dict()
-    #     self.top_words = top_words
-    #     self.train_set = set()
-    #     self.read_wordlist()
-    #     self.update_train_set()
-    #
-    #
-    # def reset_affix_candidates(self, top_affixes):
-    #     self.prefixes, self.suffixes = set(), set()
-    #     self.word_cnt = dict()
-    #     self.train_set = set()
-    #     self.read_wordlist()
-    #
-    #     self.top_affixes = top_affixes
-    #     self.get_affix_candidates()
-    #     self.update_train_set()
-    #     print('%d prefixes and %d suffixes' % (len(self.prefixes), len(self.suffixes)))
-
-    # def score_all(self, word):
-    #     scores = dict()
-    #     for candidate in self.get_candidates(word):
-    #         scores[candidate] = self.score_candidate(word, candidate)
-    #     return sorted([(v, k, self.get_raw_features(word, k)) for k, v in scores.items()], reverse=True)
-    #
     def get_gold_parents(self):
         assert not hasattr(self, 'gold_parents') and self.prefixes and self.suffixes
         self.gold_parents = dict()
@@ -441,10 +413,6 @@ class MC(object):
             if gold:
                 return candidates
 
-        # if gold and self.supervised:    # only use gold parents in supervised mode
-        #     if word in self.gold_parents:
-        #         candidates.add(self.gold_parents[word])
-        #         return candidates
         if word in self.candidates_cache: return self.candidates_cache[word]
 
         candidates.add((word, 'STOP'))
@@ -505,7 +473,6 @@ class MC(object):
         neighbors = set()
         neighbors.add(word)  # word is in its own neighbors set
         positions = set()
-        # positions.update(range(0, len(word)))
         n = len(word)
         num_neighbors = 5
         for i in xrange(num_neighbors):
@@ -529,28 +496,6 @@ class MC(object):
             if n >= 5:
                 neighbors.add(word[1] + word[0] + word[2: n - 3] + word[n - 2] + word[n - 3] + word[n - 1])
         
-        # # if n == 4 or n == 6:
-        # #     positions.add(n // 2)
-        # #     positions.add(n // 2 - 1)
-        # # elif n == 3 or n == 5 or n == 7:
-        # #     positions.add(n // 2)
-        # #     positions.add(n // 2 - 1)
-        # #     positions.add(n // 2 + 1)
-        # # else:
-        # #     positions.update(range(3, n - 3))
-        # for pos in positions:
-        #     c_old = word[pos]
-        #     n_neg = 3
-        #     cnt = 0
-        #     while True:
-        #         c = self.alphabet[random.randint(0, 25)]
-        #         if c != c_old:
-        #             word_new = word[:pos] + c + word[pos + 1:]
-        #             if word_new not in neighbors:
-        #                 neighbors.add(word_new)
-        #                 cnt += 1
-        #         if cnt == n_neg: break
-        # assert len(neighbors) > 1, neighbors
         self.neighbors_cache[word] = neighbors
         return neighbors
 
@@ -585,7 +530,7 @@ class MC(object):
             # if self.supervised and word not in self.gold_parents: continue
             r_num, r_den = max_r_num * i, max_r_den * i
             for neighbor in self.get_neighbors(word, expand=False):
-                candidates = self.get_candidates(neighbor, gold=False)#, top=top)
+                candidates = self.get_candidates(neighbor, gold=False)
                 for candidate in candidates:
                     features = self.get_raw_features(neighbor, candidate)
                     self._populate_coordinates(features, data_den, row_den, col_den, r_den)
@@ -644,8 +589,6 @@ class MC(object):
         return self.weights[self.feature2index[name]]
 
     def get_prob(self, child, candidate):
-        # if type(candidate[1]) == tuple:
-        #     candidate = candidate[1]
         if (child, candidate) in self.prob_cache: return self.prob_cache[(child, candidate)]
         candidates = set(self.get_candidates(child))
         # # this is a bit messy
@@ -754,7 +697,7 @@ class MC(object):
 
     def evaluate(self):
         p, r, f = evaluate(self.gold_segs_file, self.predicted_file['train'], quiet=True)
-        print('Training:\tprecision =', p, 'recall =', r, 'f =', f, file=sys.stderr)
+        print('MC: precision =', p, 'recall =', r, 'f =', f, file=sys.stderr)
         return (p, r, f)
 
     def update_pruner(self, pruner):
@@ -767,5 +710,4 @@ class MC(object):
     def clear_caches(self):
         if not hasattr(self, 'neighbors_cache'): self.neighbors_cache = dict()
         self.candidates_cache, self.features_cache, self.prob_cache = [dict() for _ in range(3)]
-        # self.neighbors_cache, self.candidates_cache, self.features_cache, self.prob_cache = [dict() for _ in range(4)]
         self.max_cos = dict()

@@ -1,0 +1,5 @@
+out/*
+.ipynb*
+*.ipynb
+*.pyc
+.DS_Store

@@ -50,7 +50,8 @@ class Path(object):
         else:
             return self._segment_iter(parent).extend(pair)
             
-    def get_stem(self, mode='surface'):
+    # The root is the concatenation of stems.
+    def get_root(self, mode='surface'):
         assert mode in ['surface', 'canonical']
         assert self.is_ended()
         if not hasattr(self, 'seg'):

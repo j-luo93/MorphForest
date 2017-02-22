@@ -26,10 +26,6 @@ class ChildParentPair(object):
         else:
             if self.type_ in ['COM_LEFT', 'COM_RIGHT', 'HYPHEN', 'STOP']:
                 pass
-            # global affix_cache
-            # key = (self.child, candidate)
-            # if key in affix_cache: return affix_cache[key]
-            # self.parent, type_ = candidate
             elif self.type_ == 'PREFIX':
                 affix = self.child[:len(self.child) - len(self.parent)]
             elif self.type_ in ['SUFFIX', 'APOSTR']:
@@ -49,37 +45,3 @@ class ChildParentPair(object):
             self.affix = affix
             self.trans = trans
         return affix, trans
-
-            # elif self.type_ == 'COMPOUND':
-            #     return (None, 'COMPOUND')
-            # elif type(self.type_) == tuple:
-            #     assert self.type_[1] == 'COMPOUND'
-            #     return (None, 'COMPOUND')
-            # elif self.type_ == 'COM_LEFT' or self.type_ == 'COM_RIGHT':
-            #         return (None, self.type_)
-            #     else:
-            #         assert False, self.child + '\t' + str(candidate)
-                #
-                # if self.type_ == 'PREFIX':
-                #     affix_cache[key] = (affix, 'p')
-                #     return (affix, 'p')
-                # else:
-                #     affix_cache[key] = (affix, 's')
-                #     return (affix, 's')
-        #
-        # self.parent, type_ = candidate
-        # if type_ == 'SUFFIX' or type_ == 'PREFIX': return None
-        # if type_ == 'MODIFY':
-        #     return (self.parent[-1] + '->' + self.child[len(self.parent) - 1], type_)
-        # elif type_ == 'DELETE':
-        #     return (self.parent[-1], type_)
-        # elif type_ == 'REPEAT':
-        #     return (self.parent[-1], type_)
-        # elif type_ == 'COM_LEFT' or type_ == 'COM_RIGHT':
-        #     return (None, type_)
-        # # elif type_ == 'COMPOUND':
-        # #     return (None, 'COMPOUND')
-        # # elif type(type_) == tuple:
-        # #     assert type_[1] == 'COMPOUND'
-        # #     return (None, 'COMPOUND')
-        # assert False
