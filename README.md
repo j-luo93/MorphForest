@@ -14,10 +14,10 @@ You will need to prepare three files for input before running the model, which b
 * Word vector file, named `wv.<lc>`. One word per line, specifically one word followed by a continuous vector of float numbers which are all separated by spaces. See `data/wv.eng.toy` for an example.
 * Wordlist file, named `wordlist.<lc>`. One word followed by its frequency per line, separated by space. See `data/wordlist.eng.toy` for an example.
 
-*<lc>* is the language code you have to specify, usually a three-letter or two-letter string, e.g. *eng* for English. This language code is entered as an argument when you run the code (as detailed below), and is used to find the input files in the data folder.
+*\<lc\>* is the language code you have to specify, usually a three-letter or two-letter string, e.g. *eng* for English. This language code is entered as an argument when you run the code (as detailed below), and is used to find the input files in the data folder.
 
 ## Running the code
-Use `python run.py <lc>` to run the model, where *<lc>* is the afore-mentioned language code. You can add `-h` flag to see a list of settings you can change, some of which are detailed below.
+Use `python run.py <lc>` to run the model, where *\<lc\>* is the afore-mentioned language code. You can add `-h` flag to see a list of settings you can change, some of which are detailed below.
 * `--top-affixes` or `-a`, number of most frequent affixes to use, 100 by default
 * `--top-words`, `-W`, number of most frequent words to train on, 5000 by default
 * `-compounding`, flag to include compounding features
