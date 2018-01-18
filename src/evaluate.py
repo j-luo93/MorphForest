@@ -14,7 +14,7 @@ def evaluate(gold_seg_file, pred_seg_file, quiet=False, debug=False):
         seg_points = set()
         i = 0
         for c in segmentation:
-            if c == '-': seg_points.add(i)
+            if c == ' ': seg_points.add(i)
             else: i += 1
         return seg_points
 
@@ -48,10 +48,10 @@ def evaluate(gold_seg_file, pred_seg_file, quiet=False, debug=False):
         for line in fin:
             # line = line.encode('utf8')
             # if line[:5] == 'piirr': print(list(line))
-            segs = line.strip().split(':')
+            segs = line.strip().split('\t')
             assert len(segs) % 2 == 0, segs
-            segs = ':'.join(segs[: len(segs) // 2]), ':'.join(segs[len(segs) // 2:])
-            gold_segs[segs[0]] = segs[1].split()
+            segs = ' '.join(segs[: len(segs) // 2]), ' '.join(segs[len(segs) // 2:])
+            gold_segs[segs[0]] = segs[1].split(',') # might have multiple gold segmentations
     pred_segs = dict()
     with codecs.open(pred_seg_file, 'r', encoding='utf8', errors='strict') as fin:
         try:
@@ -68,15 +68,16 @@ def evaluate(gold_seg_file, pred_seg_file, quiet=False, debug=False):
     for word in gold_segs:
         pred_seg = pred_segs[word]
         segs = gold_segs[word]
+        #import ipdb; ipdb.set_trace()
         res = evaluate_seg_points(pred_seg, segs)
         correct += res[0]
         gold_total += res[1]
         pred_total += res[2]
         predicted_segs[word] = pred_seg
         if res[2] != res[0]:
-            incorrect_segs[word] = pred_seg + ' : ' + str(segs)
+            incorrect_segs[word] = pred_seg + ' \t ' + str(segs)
         else:
-            correct_segs[word] = pred_seg + ' : ' + str(segs)
+            correct_segs[word] = pred_seg + ' \t ' + str(segs)
         if res[2] < res[1] and debug:
             print(pred_seg, segs)
             raw_input()

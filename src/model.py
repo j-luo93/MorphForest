@@ -120,9 +120,9 @@ class MC(object):
         self.gold_segs = dict()
         with codecs.open(self.gold_segs_file, 'r', 'utf8', errors='strict') as fin:
             for line in fin:
-                segs = line.strip().split(':')
+                segs = line.strip().split('\t')
                 assert len(segs) % 2 == 0, segs
-                segs = ':'.join(segs[: len(segs) // 2]), ':'.join(segs[len(segs) // 2:])
+                segs = '\t'.join(segs[: len(segs) // 2]), '\t'.join(segs[len(segs) // 2:])
                 # if len(segs) != 2:
                 #     continue
                 self.gold_segs[segs[0]] = segs[1].split()
