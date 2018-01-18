@@ -1,7 +1,8 @@
 import codecs
 import argparse
 from model import MC
-from ILP import ILP as ILP
+#from ILP import ILP as ILP
+import sys
 import cPickle
 
 parser = argparse.ArgumentParser()
@@ -27,9 +28,9 @@ args = parser.parse_args()
 if args.supervised:
     assert not args.ILP and not args.load
 if args.load:
-    print 'Loading model from %s...' %args.load
+#    print 'Loading model from %s...' %args.load
     model = cPickle.load(open(args.load, 'r'))
-    print 'Done.'
+#    print 'Done.'
 else:
     m = MC(**vars(args))
     m.read_all_data()
@@ -58,14 +59,23 @@ if args.save:
     print 'Done.'
 
 if args.input_file:
-    if not args.output_file: args.output_file = args.input_file + '.out'
-    print 'Producing segmentations for the input file %s...' %args.input_file
-    words = set([line.rstrip() for line in codecs.open(args.input_file, 'r', 'utf8')])
-    if type(model) == ILP:
-        model.seeds = words
-        model.run()
-        model.parse(wordset=words, out_file=args.output_file)
+    #if not args.output_file: args.output_file = args.input_file + '.out'
+#    print 'Producing segmentations for the input file %s...' %args.input_file
+    if args.input_file != 'stdin':
+        words = set([line.rstrip() for line in codecs.open(args.input_file, 'r', 'utf8')])
     else:
-    	assert type(model) == MC
-    	model.write_segments_to_file(wordset=words, out_file=args.output_file)
-    print 'Done'
+        words = set([line.rstrip() for line in sys.stdin])
+
+    # disabled this for consistency of segmentations
+    #if type(model) == ILP:
+    #    model.seeds = words
+    #    model.run()
+    #    model.parse(wordset=words, out_file=args.output_file)
+    #else:
+    if not type(model) == MC:
+        model = model.base
+    if args.output_file is None:
+        args.output_file = sys.stdout
+    print args.output_file
+    model.write_segments_to_file(wordset=words, out_file=args.output_file)
+ #   print 'Done'

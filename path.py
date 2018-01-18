@@ -46,7 +46,7 @@ class Path(object):
         if type_ == 'STOP': return Segment(node, node, 'stem')
         if type_ in ['COM_LEFT', 'COM_RIGHT', 'HYPHEN']:
             p1, p2 = self.parents[node]
-            return self._segment_iter(p1).splice(self._segment_iter(p2))
+            return self._segment_iter(p1).splice(self._segment_iter(p2), keep_hyphen=type_ == 'HYPHEN')
         else:
             return self._segment_iter(parent).extend(pair)
             
@@ -69,11 +69,18 @@ class Segment(object):
         self.label = label
 
     # update this segment by joining another. return updated self
-    def splice(self, other):
-        if self.is_empty(): return other
-        self.surface += '-' + other.surface
-        self.canonical += '-' + other.canonical
-        self.label += '-' + other.label
+    def splice(self, other, keep_hyphen=False):
+        if self.is_empty() and not keep_hyphen: return other
+
+        if self.is_empty():
+            delim = '- '
+        elif keep_hyphen:
+            delim = ' - '
+        else:
+            delim = ' '
+        self.surface += delim + other.surface
+        self.canonical += delim + other.canonical
+        self.label += delim + other.label
         return self
 
     # extend current segment by pair
@@ -82,25 +89,25 @@ class Segment(object):
         type_ = pair.type_
         affix, trans = pair.get_affix_and_transformation()
         if type_ == 'PREFIX':
-            self.surface = affix + '-' + self.surface
-            self.canonical = affix + '-' + self.canonical
-            self.label = 'pre' + '-' + self.label
+            self.surface = affix + ' ' + self.surface
+            self.canonical = affix + ' ' + self.canonical
+            self.label = 'pre' + ' ' + self.label
         else:
-            self.canonical += '-' + affix
-            self.label += '-' + 'suf'
+            self.canonical += ' ' + affix
+            self.label += ' ' + 'suf'
             if type_ == 'SUFFIX' or type_ == 'APOSTR':
-                self.surface += '-' + affix
+                self.surface += ' ' + affix
             elif type_ == 'REPEAT':
-                self.surface += pair.parent[-1] + '-' + affix
+                self.surface += pair.parent[-1] + ' ' + affix
             elif type_ == 'MODIFY':
-                self.surface = self.surface[:-1] + pair.child[len(pair.parent) - 1] + '-' + affix
+                self.surface = self.surface[:-1] + pair.child[len(pair.parent) - 1] + ' ' + affix
             else:
                 assert type_ == 'DELETE'
                 if len(self.surface) > 1:
-                    if self.surface[-2] == '-':
+                    if self.surface[-2] == ' ':
                         self.surface = self.surface[:-1] + affix
                     else:
-                        self.surface = self.surface[:-1] + '-' + affix
+                        self.surface = self.surface[:-1] + ' ' + affix
         return self
 
     def is_empty(self):

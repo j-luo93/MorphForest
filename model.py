@@ -133,6 +133,8 @@ class MC(object):
         self.word_cnt = dict()
         if self.lang == 'fin' or self.lang == 'ger' or self.lang == 'eng':
             f = codecs.open(self.wordlist_file, 'r', 'iso-8859-1', errors='strict')
+        elif self.lang in ['sw', 'tl']:
+            f = codecs.open(self.wordlist_file, 'r', 'utf8')
         else:
             f = open(self.wordlist_file, 'r')
         for line in f:
@@ -234,7 +236,8 @@ class MC(object):
                 else: output += c
             return output
         else:
-            raise NotImplementedError
+            return word 
+            #raise NotImplementedError
 
     def get_gold_parents(self):
         assert not hasattr(self, 'gold_parents') and self.prefixes and self.suffixes
@@ -647,10 +650,13 @@ class MC(object):
             optimizer.run(w, loss)
             self.weights = w.get_value()
             # write weights to log
-            with codecs.open(self.out_path + 'MC.weights', 'w', 'utf8', errors='strict') as fout:
+            with codecs.open(self.out_path + 'MC.weights', 'w', 'utf8', errors='ignore') as fout:
                 for i, v in sorted(list(enumerate(self.weights)), key=itemgetter(1), reverse=True):
                     tmp = '%s\t%f\n' %(self.index2feature[i], v)
-                    fout.write(tmp)
+                    try:
+                        fout.write(tmp)
+                    except:
+                        import ipdb; ipdb.set_trace()
             self.clear_caches()
             self.write_segments_to_file()
             p, r, f = self.evaluate()
@@ -691,9 +697,13 @@ class MC(object):
             wordset = set(self.gold_segs.keys())
         if not out_file:
             out_file = self.predicted_file['train']
-        with codecs.open(out_file, 'w', 'utf8', errors='strict') as fout:
-            for i, word in enumerate(wordset):
-                fout.write(word + ':' + self.segment(word) + '\n')
+        if isinstance(out_file, str):
+            fout = codecs.open(out_file, 'w', 'utf8', errors='strict')
+        else:
+            fout = out_file
+        for i, word in enumerate(wordset):
+            fout.write(word + '\t' + self.segment(word) + '\n')
+        fout.close()
 
     def evaluate(self):
         p, r, f = evaluate(self.gold_segs_file, self.predicted_file['train'], quiet=True)

@@ -256,7 +256,7 @@ class ILP(object):
         with codecs.open(out_file, 'w', 'utf8', errors='strict') as fout:
             for w in wordset:
                 path = self.get_seg_path(w)
-                fout.write(w + ':' + path.get_segmentation() + '\n')
+                fout.write(w + '\t' + path.get_segmentation() + '\n')
 
     def evaluate(self):
         p ,r, f = evaluate(self.base.gold_segs_file, self.out_file, quiet=True)

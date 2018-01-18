@@ -57,9 +57,9 @@ def evaluate(gold_seg_file, pred_seg_file, quiet=False, debug=False):
         try:
             for line in fin:
                 # if line[:5] == 'piirr': print(list(line))
-                segs = line.strip().split(':')
+                segs = line.strip().split('\t')
                 assert len(segs) % 2 == 0, segs
-                segs = ':'.join(segs[: len(segs) // 2]), ':'.join(segs[len(segs) // 2:])
+                segs = ' '.join(segs[: len(segs) // 2]), ' '.join(segs[len(segs) // 2:])
                 pred_segs[segs[0]] = segs[1]      # assert only one prediction, no alternatives
         except:
             print(line)
