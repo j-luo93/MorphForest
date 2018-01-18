@@ -37,7 +37,7 @@ else:
 
     if not args.ILP:
         m.run(reread=False)
-	model = m
+        model = m
     else:
         for i in range(args.iter):
             m.clear_caches()
@@ -61,10 +61,11 @@ if args.save:
 if args.input_file:
     #if not args.output_file: args.output_file = args.input_file + '.out'
 #    print 'Producing segmentations for the input file %s...' %args.input_file
+
     if args.input_file != 'stdin':
-        words = set([line.rstrip() for line in codecs.open(args.input_file, 'r', 'utf8')])
+        words = [line.strip() for line in codecs.open(args.input_file, 'r', 'utf8')]
     else:
-        words = set([line.rstrip() for line in sys.stdin])
+        words = [line.strip() for line in sys.stdin]
 
     # disabled this for consistency of segmentations
     #if type(model) == ILP:

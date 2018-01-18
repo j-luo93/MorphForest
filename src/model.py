@@ -8,6 +8,7 @@ import sys
 import codecs
 import math
 import random
+import traceback
 from operator import itemgetter
 from collections import Counter, defaultdict
 from time import localtime, strftime
@@ -98,7 +99,7 @@ class MC(object):
         self._add_top_words_from_wordlist()
         self.read_affixes()
         if self.INDUCTIVE: self._add_words_from_gold()
-        if self.supervised: 
+        if self.supervised:
             self.get_gold_parents()
             self.train_set = set(self.gold_parents.keys())
         # self.update_train_set()
@@ -168,7 +169,7 @@ class MC(object):
     def _add_words_from_gold(self):
         self.train_set.update(filter(lambda w: len(w) >= 3, self.gold_segs.keys()))
         print('Now %d words in training set, inductive mode.' %(len(self.train_set)), file=sys.stderr)
-        
+
     def decompose(self, s):
         if self.lang == 'eng':
             new_set = set()
@@ -182,7 +183,7 @@ class MC(object):
                     new_set.add(w)
             return new_set
         return s
-        
+
     def read_affixes(self):
         assert not hasattr(self, 'prefixes') and not hasattr(self, 'suffixes')
         self.prefixes, self.suffixes = set(), set()
@@ -236,7 +237,7 @@ class MC(object):
                 else: output += c
             return output
         else:
-            return word 
+            return word
             #raise NotImplementedError
 
     def get_gold_parents(self):
@@ -266,12 +267,12 @@ class MC(object):
                 suffix_score += s_score
                 scores[(right_parent, 'PREFIX')] = prefix_score
                 scores[(left_parent, 'SUFFIX')] = suffix_score + 0.1
-    
+
                 if right_parent in self.word_cnt and prefix in self.word_cnt:
                     scores[(prefix, right_parent), 'COM_RIGHT'] = 0.75 * self.get_similarity(right_parent, ch) + 0.25 * self.get_similarity(prefix, ch) + 1
                 if left_parent in self.word_cnt and suffix in self.word_cnt:
                     scores[(left_parent, suffix), 'COM_LEFT'] = 0.25 * self.get_similarity(suffix, ch) + 0.75 * self.get_similarity(left_parent, ch) + 1
-                
+
                 if self.transform:
                     if (len(left_parent) > 1 and left_parent[-1] == left_parent[-2]):
                         repeat_parent = left_parent[:-1]
@@ -285,7 +286,7 @@ class MC(object):
                         delete_parent = left_parent + "e"    # only consider e deletion.
                         score = self.get_similarity(ch, delete_parent) + s_score - 0.25
                         scores[(delete_parent, 'DELETE')] = score
-    
+
                 best = max(scores.items(), key=itemgetter(1))[0]
                 type_ = best[1]
                 # print best, scores
@@ -489,7 +490,7 @@ class MC(object):
             if pos + 2 < n:
                 new_word += word[pos + 2:]
             neighbors.add(new_word)
-        
+
         if n >= 4:
             neighbors.add(word[1] + word[0] + word[2: n - 2] + word[n - 1] + word[n - 2])
             if n >= 5:
@@ -498,7 +499,7 @@ class MC(object):
                 neighbors.add(word[0] + word[2] + word[1] + word[3: n - 3] + word[n - 2] + word[n - 3] + word[n - 1])
             if n >= 5:
                 neighbors.add(word[1] + word[0] + word[2: n - 3] + word[n - 2] + word[n - 3] + word[n - 1])
-        
+
         self.neighbors_cache[word] = neighbors
         return neighbors
 
@@ -702,7 +703,23 @@ class MC(object):
         else:
             fout = out_file
         for i, word in enumerate(wordset):
-            fout.write(word + '\t' + self.segment(word) + '\n')
+            seg = None
+            try:
+                if type(word) is str:
+                    word = word.decode('utf8')
+                seg = self.segment(word)
+                if type(seg) is str:
+                    seg = seg.decode('utf8')
+                # note, if string is already in unicode, do not decode again with utf8
+                # ERROR --> 'abcd'.decode('utf8').decode('utf8')
+                line = u'%s\t%s\n' % (word, seg)
+                fout.write(line)
+            except Exception as e:
+                print(type(word), type(seg), file=sys.stderr)
+                print(word, file=sys.stderr)
+                print(seg, file=sys.stderr)
+                traceback.print_exc()
+                raise e
         fout.close()
 
     def evaluate(self):
