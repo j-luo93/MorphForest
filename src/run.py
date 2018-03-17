@@ -30,6 +30,7 @@ if args.supervised:
 if args.load:
 #    print 'Loading model from %s...' %args.load
     model = cPickle.load(open(args.load, 'r'))
+    model.read_word_vectors() # word vectors are not saved with the model
 #    print 'Done.'
 else:
     m = MC(**vars(args))
@@ -54,8 +55,11 @@ if args.save:
     print 'Saving model to %s...' %args.save
     if args.ILP:
         ilp.model = None    # gurobi model has to be skipped for pickling
+        ilp.wv = None # don't save word vectors
         cPickle.dump(ilp, open(args.save, 'w'))
-    else: cPickle.dump(m, open(args.save, 'w'))
+    else: 
+        m.wv = None # don't save word vectors
+        cPickle.dump(m, open(args.save, 'w'))
     print 'Done.'
 
 if args.input_file:
