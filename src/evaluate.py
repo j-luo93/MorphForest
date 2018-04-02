@@ -89,9 +89,9 @@ def evaluate(gold_seg_file, pred_seg_file, quiet=False, debug=False):
         print_segs(correct_segs)
         print("\nAll segmentations:")
         print_segs(pred_segs)
-    p = correct / pred_total
-    r = correct / gold_total
-    f = 2 * p * r / (p + r)
+    p = correct / pred_total if pred_total > 0 else 0.0
+    r = correct / gold_total if gold_total > 0 else 0.0
+    f = 2 * p * r / (p + r) if (p + r) > 0 else 0.0
     print("Correct: %s\tGoldTotal: %s\tPredTotal: %s" %(correct, gold_total, pred_total))
     print("Precision: %s\tRecall: %s\tF1: %s" %(p, r, f))
     return (p, r, f)

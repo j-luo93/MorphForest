@@ -1,7 +1,7 @@
 import codecs
 import argparse
 from model import MC
-#from ILP import ILP as ILP
+from ILP import ILP as ILP
 import sys
 import cPickle
 
@@ -21,6 +21,7 @@ parser.add_argument('--load', '-l', help='file to load the model from', metavar=
 parser.add_argument('--save', '-s', help='file to save the model to', metavar='')
 parser.add_argument('--iter', default=5, type=int, help='number of ILP iterations', metavar='')
 parser.add_argument('--data-path,', '-d', dest='data_path', default='data/', help='folder where data are kept', metavar='')
+parser.add_argument('--msg', '-M', type=str, help='prefix for out_path', metavar='')
 parser.add_argument('--input-file,', '-I', dest='input_file', help='input file, a list of words for which the trained model is used', metavar='')
 parser.add_argument('--output-file,', '-O', dest='output_file', help='output file', metavar='')
 args = parser.parse_args()
@@ -30,7 +31,11 @@ if args.supervised:
 if args.load:
 #    print 'Loading model from %s...' %args.load
     model = cPickle.load(open(args.load, 'r'))
+
+    if isinstance(model, ILP):
+        model = model.base
     model.read_word_vectors() # word vectors are not saved with the model
+    model.read_wordlist() # word vectors are not saved with the model
 #    print 'Done.'
 else:
     m = MC(**vars(args))
@@ -55,10 +60,12 @@ if args.save:
     print 'Saving model to %s...' %args.save
     if args.ILP:
         ilp.model = None    # gurobi model has to be skipped for pickling
-        ilp.wv = None # don't save word vectors
+        ilp.base.wv = None # don't save word vectors
+        ilp.base.word_cnt = None
         cPickle.dump(ilp, open(args.save, 'w'))
     else: 
         m.wv = None # don't save word vectors
+        m.word_cnt = None
         cPickle.dump(m, open(args.save, 'w'))
     print 'Done.'
 

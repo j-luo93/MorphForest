@@ -36,7 +36,7 @@ class MC(object):
     def __init__(self, **kwargs):
         random.seed(kwargs['seed'])
         self.data_path = kwargs['data_path']
-        self.out_path = self._get_out_path()
+        self.out_path = self._get_out_path(kwargs['msg'])
 
         self.lang = kwargs['lang']
         self.top_affixes = kwargs['top_affixes']
@@ -64,7 +64,7 @@ class MC(object):
         self._save_model_params()
 
         self.DEBUG = kwargs['DEBUG']
-        self.INDUCTIVE = True
+        self.INDUCTIVE = False
 
         if self.DEBUG:
             self.INDUCTIVE = False
@@ -72,11 +72,14 @@ class MC(object):
             self.wordlist_file += '.toy'
             self.gold_segs_file += '.toy'
 
-    def _get_out_path(self):
+    def _get_out_path(self, msg):
         tmp_time = localtime()
         date = strftime('%m-%d', tmp_time)
         timestamp = strftime('%H:%M:%S', tmp_time)
-        out_path = 'out/' + date + '/' + timestamp + "/"
+        if msg is None:
+            out_path = 'out/' + date + '/' + timestamp + "/"
+        else:
+            out_path = 'out/' + date + '/' + msg + '-' + timestamp + "/"
         if not os.path.isdir('out'): os.mkdir('out')
         if not os.path.isdir('out/' + date): os.mkdir('out/' + date)
         if not os.path.isdir(out_path): os.mkdir(out_path)
@@ -106,7 +109,7 @@ class MC(object):
 
     # assume utf8 encoding for word vector files
     def read_word_vectors(self):
-        assert not hasattr(self, 'wv')
+        assert not hasattr(self, 'wv') or self.wv is None
         self.wv = dict()
         with codecs.open(self.word_vector_file, encoding='utf8', errors='strict') as fin:
             for line in fin:
@@ -130,7 +133,7 @@ class MC(object):
 
     # assume standard texts for wordlist files / iso-8859-1 for Finnish and German
     def read_wordlist(self):
-        assert not hasattr(self, 'word_cnt')
+        assert not hasattr(self, 'word_cnt') or self.word_cnt is None
         self.word_cnt = dict()
         if self.lang == 'fin' or self.lang == 'ger' or self.lang == 'eng':
             f = codecs.open(self.wordlist_file, 'r', 'iso-8859-1', errors='strict')

@@ -21,13 +21,15 @@ def main(args):
     model = args['model']
     fout = args['output']
     fin = args['input']
+    lang = args['lang']
+    data_dir = args['data_dir']
 
     import subprocess
     import codecs
 
     if fin is sys.stdin:
         fin = 'stdin'
-    subprocess.check_output('python src/run.py sw --load %s -I %s -O %s'  %(model, fin, 'tmp'), shell=True)
+    subprocess.check_output('python src/run.py %s --load %s -I %s -O %s -d %s'  %(lang, model, fin, 'tmp', data_dir), shell=True)
     # post-processing to deal with hyphens
     if fout is not sys.stdout:
         fout = codecs.open(fout, 'w', 'utf8')
@@ -71,8 +73,10 @@ if __name__ == '__main__':
     import argparse
     import sys
     parser = argparse.ArgumentParser("""Morfessor.""")
-    parser.add_argument('model', help='Morfessor model, one per text column (for TSV)')
+    parser.add_argument('lang', help='language')
+    parser.add_argument('model', help='Segmenter model, one per text column (for TSV)')
     parser.add_argument('-in', '--input', help='Input file. Default=STDIN', default=sys.stdin)
     parser.add_argument('-out', '--output', help='Output file. DEFAULT=STDOUT', default=sys.stdout)
+    parser.add_argument('--data_dir', '-dd', help='data directory', default='data/')
     args = vars(parser.parse_args())
     main(args)
