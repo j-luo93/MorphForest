@@ -108,10 +108,12 @@ class MC(object):
         # self.update_train_set()
 
     # assume utf8 encoding for word vector files
-    def read_word_vectors(self):
+    def read_word_vectors(self, wv_path=None):
         assert not hasattr(self, 'wv') or self.wv is None
         self.wv = dict()
-        with codecs.open(self.word_vector_file, encoding='utf8', errors='strict') as fin:
+        if not wv_path:
+            wv_path = self.word_vector_file
+        with codecs.open(wv_path, encoding='utf8', errors='strict') as fin:
             for line in fin:
                 segs = line.strip().split(' ')
                 self.wv[self._standardize(segs[0])] = np.asarray(map(float, segs[1:]))
@@ -132,15 +134,18 @@ class MC(object):
         print('Read %d gold segmentations.' %(len(self.gold_segs)), file=sys.stderr)
 
     # assume standard texts for wordlist files / iso-8859-1 for Finnish and German
-    def read_wordlist(self):
+    def read_wordlist(self, wordlist_file=None):
+
+        if not wordlist_file:
+            wordlist_file = self.wordlist_file
         assert not hasattr(self, 'word_cnt') or self.word_cnt is None
         self.word_cnt = dict()
         if self.lang == 'fin' or self.lang == 'ger' or self.lang == 'eng':
-            f = codecs.open(self.wordlist_file, 'r', 'iso-8859-1', errors='strict')
+            f = codecs.open(wordlist_file, 'r', 'iso-8859-1', errors='strict')
         elif self.lang in ['sw', 'tl']:
-            f = codecs.open(self.wordlist_file, 'r', 'utf8')
+            f = codecs.open(wordlist_file, 'r', 'utf8')
         else:
-            f = open(self.wordlist_file, 'r')
+            f = open(wordlist_file, 'r')
         for line in f:
             segs = line.split()
             if len(segs) != 2: continue
@@ -696,15 +701,7 @@ class MC(object):
             self.gold_segs = self.gold_segs_copy
             print(p / 5, r / 5, f /5)
 
-    def write_segments_to_file(self, wordset=None, out_file=None):
-        if not wordset:
-            wordset = set(self.gold_segs.keys())
-        if not out_file:
-            out_file = self.predicted_file['train']
-        if isinstance(out_file, str):
-            fout = codecs.open(out_file, 'w', 'utf8', errors='strict')
-        else:
-            fout = out_file
+    def segment_all(self, wordset):
         for i, word in enumerate(wordset):
             seg = None
             try:
@@ -715,14 +712,26 @@ class MC(object):
                     seg = seg.decode('utf8')
                 # note, if string is already in unicode, do not decode again with utf8
                 # ERROR --> 'abcd'.decode('utf8').decode('utf8')
-                line = u'%s\t%s\n' % (word, seg)
-                fout.write(line)
+                yield word, seg
             except Exception as e:
                 print(type(word), type(seg), file=sys.stderr)
                 print(word, file=sys.stderr)
                 print(seg, file=sys.stderr)
                 traceback.print_exc()
                 raise e
+
+    def write_segments_to_file(self, wordset=None, out_file=None):
+        if not wordset:
+            wordset = set(self.gold_segs.keys())
+        if not out_file:
+            out_file = self.predicted_file['train']
+        if isinstance(out_file, str):
+            fout = codecs.open(out_file, 'w', 'utf8', errors='strict')
+        else:
+            fout = out_file
+        for word, seg in self.segment_all(wordset):
+            line = u'%s\t%s\n' % (word, seg)
+            fout.write(line)
         fout.close()
 
     def evaluate(self):
