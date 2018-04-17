@@ -17,6 +17,7 @@ import sys
 import cPickle
 import os
 from os import path
+import codecs
 
 src_dir = path.join(path.dirname(path.realpath(__file__)), 'src')
 sys.path.insert(0, src_dir)
@@ -89,4 +90,8 @@ if __name__ == '__main__':
     parser.add_argument('-out', '--output', dest='fout', help='Output file. DEFAULT=STDOUT', default=sys.stdout)
     parser.add_argument('--data_dir', '-dd', help='data directory', default='data/')
     args = vars(parser.parse_args())
+
+    for f, mode in [('fin', 'r'), ('fout', 'w')]:
+        if type(args[f]) is str:
+            args[f] = codecs.open(args[f], mode, 'UTF-8')
     main(**args)
