@@ -34,10 +34,10 @@ def load_model(model_path, data_path, lang):
     model = cPickle.load(open(model_path, 'r'))
     if isinstance(model, ILP):
         model = model.base
-        log.info('reading word vectors from %s' % wvec_path)
-        model.read_word_vectors(wvec_path) # word vectors are not saved with the model
-        log.info('reading word list from %s' % wlist_path)
-        model.read_wordlist(wlist_path) # word vectors are not saved with the model
+    log.info('reading word vectors from %s' % wvec_path)
+    model.read_word_vectors(wvec_path) # word vectors are not saved with the model
+    log.info('reading word list from %s' % wlist_path)
+    model.read_wordlist(wlist_path) # word vectors are not saved with the model
     return model
 
 def main(model, data_dir, lang, fin, fout, **args):
