@@ -13,29 +13,42 @@ Note:
 """
 from __future__ import print_function
 import traceback
+import sys
+import cPickle
+import os
+from os import path
+import codecs
 
-def main(args):
+src_dir = path.join(path.dirname(path.realpath(__file__)), 'src')
+sys.path.insert(0, src_dir)
+
+from model import MC
+from ILP import ILP as ILP
+import logging as log
+log.basicConfig(level=log.DEBUG)
+
+def load_model(model_path, data_path, lang):
+    log.debug("Loading model from %s" % model_path)
+    wvec_path = path.join(data_path, 'wv.%s' %  lang)
+    wlist_path = path.join(data_path, 'wordlist.%s' %  lang)
+    model = cPickle.load(open(model_path, 'r'))
+    if isinstance(model, ILP):
+        model = model.base
+    log.info('reading word vectors from %s' % wvec_path)
+    model.read_word_vectors(wvec_path) # word vectors are not saved with the model
+    log.info('reading word list from %s' % wlist_path)
+    model.read_wordlist(wlist_path) # word vectors are not saved with the model
+    return model
+
+def main(model, data_dir, lang, fin, fout, **args):
     if (sys.stdout.encoding is None):
         print("please `export PYTHONIOENCODING=UTF-8`", file=sys.stderr)
         exit(1)
-    model = args['model']
-    fout = args['output']
-    fin = args['input']
-    lang = args['lang']
-    data_dir = args['data_dir']
 
-    import subprocess
-    import codecs
+    model = load_model(model, data_dir, lang)
+    words = (line.strip() for line in fin)
 
-    if fin is sys.stdin:
-        fin = 'stdin'
-    subprocess.check_output('python src/run.py %s --load %s -I %s -O %s -d %s'  %(lang, model, fin, 'tmp', data_dir), shell=True)
-    # post-processing to deal with hyphens
-    if fout is not sys.stdout:
-        fout = codecs.open(fout, 'w', 'utf8')
-    fin = codecs.open('tmp', 'r', 'utf8')
-    for line in fin:
-        token, segs = line.strip().split('\t')
+    for token, segs in model.segment_all(words):
         segs = segs.split()
         # first pass to identify intervals of consecutive hyphens
         intervals = list()
@@ -65,9 +78,7 @@ def main(args):
         segs = ' '.join(segs)
         out_line = '%s\t%s\n' % (token, segs)
         fout.write(out_line)
-    fin.close()
-    if fout is not sys.stdout:
-        fout.close()
+
 
 if __name__ == '__main__':
     import argparse
@@ -75,8 +86,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser("""Morfessor.""")
     parser.add_argument('lang', help='language')
     parser.add_argument('model', help='Segmenter model, one per text column (for TSV)')
-    parser.add_argument('-in', '--input', help='Input file. Default=STDIN', default=sys.stdin)
-    parser.add_argument('-out', '--output', help='Output file. DEFAULT=STDOUT', default=sys.stdout)
+    parser.add_argument('-in', '--input', dest='fin', help='Input file. Default=STDIN', default=sys.stdin)
+    parser.add_argument('-out', '--output', dest='fout', help='Output file. DEFAULT=STDOUT', default=sys.stdout)
     parser.add_argument('--data_dir', '-dd', help='data directory', default='data/')
     args = vars(parser.parse_args())
-    main(args)
+
+    for f, mode in [('fin', 'r'), ('fout', 'w')]:
+        if type(args[f]) is str:
+            args[f] = codecs.open(args[f], mode, 'UTF-8')
+    main(**args)
