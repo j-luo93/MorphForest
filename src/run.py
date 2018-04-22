@@ -13,6 +13,7 @@ parser.add_argument('-compounding', action='store_true', help='use compounding, 
 parser.add_argument('-sibling', action='store_true', help='use sibling feature, default False')
 parser.add_argument('-supervised', action='store_true', help='flag to use supervised')
 parser.add_argument('-ILP', action='store_true', help='ILP mode, default False')
+parser.add_argument('-lc', action='store_true', help='Use lowercase')
 parser.add_argument('--seed', default=1234, type=int, help='random seed, default 1234', metavar='')
 parser.add_argument('--alpha', '-a', default=0.001, type=float, help='alpha value for ILP', metavar='')
 parser.add_argument('--beta', '-b', default=1.0, type=float, help='beta value for ILP', metavar='')
@@ -76,6 +77,8 @@ if args.input_file:
     if args.input_file != 'stdin':
         words = [line.strip() for line in codecs.open(args.input_file, 'r', 'utf8')]
     else:
+        UTF8Reader = codecs.getreader('utf8')
+        sys.stdin = UTF8Reader(sys.stdin)
         words = [line.strip() for line in sys.stdin]
 
     # disabled this for consistency of segmentations
@@ -88,6 +91,41 @@ if args.input_file:
         model = model.base
     if args.output_file is None:
         args.output_file = sys.stdout
-    print args.output_file
-    model.write_segments_to_file(wordset=words, out_file=args.output_file)
+
+
+
+    # handle lowercase
+    if args.lc:
+        lc_words = [word.lower() for word in words]
+        model.write_segments_to_file(wordset=lc_words, out_file='tmp.tmp')
+        with codecs.open('tmp.tmp', 'r', 'utf8') as fin, codecs.open(args.output_file, 'w', 'utf8') as fout:
+            for i, line in enumerate(fin):
+                segs = line.strip().split('\t')
+                w = lc_words[i]
+                assert segs[0].lower() == w, '%s %s' %(segs, [w])
+                seg = segs[1]
+                orig_w = words[i]
+                
+                ptr = 0
+                ptr_orig = 0
+                fout.write(orig_w + '\t')
+                while ptr_orig < len(orig_w):
+                    if seg[ptr] == ' ':
+                        fout.write(' ')
+                        ptr += 1
+                    elif seg[ptr] != orig_w[ptr_orig]:
+                        assert seg[ptr] == orig_w[ptr_orig].lower(), '%s %s %s %s' %(seg, ptr, ptr_orig, orig_w)
+                        fout.write(orig_w[ptr_orig])
+                        ptr += 1
+                        ptr_orig += 1
+
+                    else:
+                        fout.write(orig_w[ptr_orig])
+                        ptr += 1
+                        ptr_orig += 1
+                fout.write('\n')
+                    
+
+    else:
+        model.write_segments_to_file(wordset=words, out_file=args.output_file)
  #   print 'Done'

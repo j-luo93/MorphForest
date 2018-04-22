@@ -29,7 +29,10 @@ def main(args):
 
     if fin is sys.stdin:
         fin = 'stdin'
-    subprocess.check_output('python src/run.py %s --load %s -I %s -O %s -d %s'  %(lang, model, fin, 'tmp', data_dir), shell=True)
+    if args['lc']:
+        subprocess.check_output('python src/run.py %s --load %s -I %s -O %s -d %s -lc'  %(lang, model, fin, 'tmp', data_dir), shell=True)
+    else:
+        subprocess.check_output('python src/run.py %s --load %s -I %s -O %s -d %s'  %(lang, model, fin, 'tmp', data_dir), shell=True)
     # post-processing to deal with hyphens
     if fout is not sys.stdout:
         fout = codecs.open(fout, 'w', 'utf8')
@@ -78,5 +81,6 @@ if __name__ == '__main__':
     parser.add_argument('-in', '--input', help='Input file. Default=STDIN', default=sys.stdin)
     parser.add_argument('-out', '--output', help='Output file. DEFAULT=STDOUT', default=sys.stdout)
     parser.add_argument('--data_dir', '-dd', help='data directory', default='data/')
+    parser.add_argument('-lc', action='store_true', help='use lowercase')
     args = vars(parser.parse_args())
     main(args)
