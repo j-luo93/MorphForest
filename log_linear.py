@@ -1,68 +1,101 @@
 import torch.nn as nn
+import logging
+
+from enlighten import Counter
+from dev_misc import cache, Map, Metrics, Metric
 
 
 class LogLinearModel(nn.Module):
 
-    def _compute_loss(self):
-        # first pass to know the how many paddings we need
+    def __init__(self, feature_ext):
+        self.feature_ext = feature_ext
+
+    @cache(persist=False)
+    def _first_pass(self, batch):
+        """First pass to know the how many paddings we need."""
         max_r_num, max_r_den = 0, 0
-        print('First pass to gather info...')
-        for word_i, word in enumerate(self.train_set):
-            print('\r%d/%d' % (word_i + 1, len(self.train_set)), end='')
-            sys.stdout.flush()
+        pbar = Counter()
+        logging.info('First pass to gather info...')
+        for word_i, word in enumerate(pbar(batch.train_set)):
             # if self.supervised and word not in self.gold_parents: continue
             acc = 0
-            for neighbor in self.get_neighbors(word, expand=False):
-                acc += len(self.get_candidates(neighbor, gold=False))  # , top=top))
-            max_r_num = max(max_r_num, len(self.get_candidates(word, gold=True)))
-            max_r_den = max(max_r_den, acc)
+            for neighbor in self.feature_ext.get_neighbors(word, expand=False):
+                acc += len(self.feature_ext.get_candidates(neighbor, gold=False))  # , top=top))
+                max_r_num = max(max_r_num, len(self.feature_ext.get_candidates(word, gold=True)))
+                max_r_den = max(max_r_den, acc)
 
         self.feature2index = dict()
         self.index2feature = list()
-        self.weights = None
 
         data_num, row_num, col_num = list(), list(), list()
         data_den, row_den, col_den = list(), list(), list()
         cnt_num, cnt_den = list(), list()
-        print('\nBuilding sparse matrix for MC...')
+        logging.info('Building sparse matrix for MC...')
         i = 0
-        for word_i, word in enumerate(self.train_set):
-            print('\r%d/%d' % (word_i + 1, len(self.train_set)), end='')
-            sys.stdout.flush()
+        pbar = Counter()
+        for word_i, word in enumerate(pbar(batch.wordlist)):
             # if self.supervised and word not in self.gold_parents: continue
             r_num, r_den = max_r_num * i, max_r_den * i
-            for neighbor in self.get_neighbors(word, expand=False):
-                candidates = self.get_candidates(neighbor, gold=False)
+            # FIXME a lot of methods go into `feature_ext` now.
+            for neighbor in self.feature_ext.get_neighbors(word, expand=False):
+                candidates = self.feature_ext.get_candidates(neighbor, gold=False)
                 for candidate in candidates:
-                    features = self.get_raw_features(neighbor, candidate)
+                    features = self.feature_ext.get_raw_features(neighbor, candidate)
                     self._populate_coordinates(features, data_den, row_den, col_den, r_den)
                     cnt_den.append(1.0)
                     r_den += 1
-            for r in xrange(r_den, max_r_den * (i + 1)):
+            for r in range(r_den, max_r_den * (i + 1)):
                 cnt_den.append(0.0)
-            candidates = self.get_candidates(word, gold=True)
+            candidates = self.feature_ext.get_candidates(word, gold=True)
             for candidate in candidates:
-                features = self.get_raw_features(word, candidate)
+                features = self.feature_ext.get_raw_features(word, candidate)
                 self._populate_coordinates(features, data_num, row_num, col_num, r_num)
                 cnt_num.append(1.0)
                 r_num += 1
-            for r in xrange(r_num, max_r_num * (i + 1)):
+            for r in range(r_num, max_r_num * (i + 1)):
                 cnt_num.append(0.0)
             i += 1
-        print('\nNum of features for MC is', len(self.feature2index), file=sys.stderr)
-        # build matrices
-        weights = [0.0] * len(self.feature2index)
-        weights = theano.shared(np.asarray(weights), name='w')
-        cnt_num = theano.shared(np.asarray(cnt_num), name='cnt_num')
-        cnt_den = theano.shared(np.asarray(cnt_den), name='cnt_den')
+        logging.info('Num of features for MC is', len(self.feature2index))
 
-        N = len(self.train_set) if not self.supervised else len(self.gold_parents)
-        numerator = sp.csr_matrix((data_num, (row_num, col_num)), shape=(N * max_r_num, len(self.feature2index)))
-        denominator = sp.csr_matrix((data_den, (row_den, col_den)), shape=(N * max_r_den, len(self.feature2index)))
-        num = (T.exp(theano.sparse.dot(numerator, weights)) * cnt_num).reshape((N, max_r_num))
-        den = (T.exp(theano.sparse.dot(denominator, weights)) * cnt_den).reshape((N, max_r_den))
-        loss = -T.sum(T.log(T.sum(num, axis=1) / T.sum(den, axis=1)))
-        return weights, loss
+        # NOTE Old theano code.
+        # weights = [0.0] * len(feature2index)
+        # weights = theano.shared(np.asarray(weights), name='w')
+        # cnt_num = theano.shared(np.asarray(cnt_num), name='cnt_num')
+        # cnt_den = theano.shared(np.asarray(cnt_den), name='cnt_den')
+        # N = len(self.train_set) if not self.supervised else len(self.gold_parents)
+        # numerator = sp.csr_matrix((data_num, (row_num, col_num)), shape=(N * max_r_num, len(feature2index)))
+        # denominator = sp.csr_matrix((data_den, (row_den, col_den)), shape=(N * max_r_den, len(feature2index)))
+        # num = (T.exp(theano.sparse.dot(numerator, weights)) * cnt_num).reshape((N, max_r_num))
+        # den = (T.exp(theano.sparse.dot(denominator, weights)) * cnt_den).reshape((N, max_r_den))
+        # loss = -T.sum(T.log(T.sum(num, axis=1) / T.sum(den, axis=1)))
+        # return weights, loss
+
+        # Build matrix.
+        N = len(batch.wordlist)
+        M = len(self.feature2index)
+        self.cnt_num = torch.from_numpy(cnt_num).float()
+        self.cnt_den = torch.from_numpy(cnt_den).float()
+        row_num = torch.from_numpy(row_num)
+        col_num = torch.from_numpy(col_num)
+        # Get numerator.
+        indices_num = torch.stack([row_num, col_num], dim=0)
+        values_num = torch.from_numpy(data_num).float()
+        self.numerator = sp.FloatTensor(indices_num, values_num, [N * max_r_num, M])
+        # Get denominator.
+        indices_den = torch.stack([row_den, col_den], dim=0)
+        values_den = torch.from_denpy(data_den).float()
+        self.denominator = sp.FloatTensor(indices_den, values_den, [N * max_r_den, M])
+
+    def forward(self, batch):
+        self._first_pass(batch)
+        den = ((self.denominator @ self.weights).exp() * self.cnt_den).vie(N, max_r_den)
+        self.weights = nn.Parameter(torch.zeros(M))
+        num = ((self.numerator_num @ self.weights).exp() * self.cnt_num).vie(N, max_r_num)
+        nll = -(num.sum(dim=1) / den.sum(dim=1)).log().sum()
+        nll = Metric('nll', nll, batch.num_samples)
+        reg_l2 = (self.weights ** 2).sum()
+        reg_l2 = Metric('reg_l2', reg_l2, batch.num_samples)
+        return Metrics(nll, reg_l2)
 
     # populate coordinates with features, expanding feature set along the way
     def _populate_coordinates(self, features, data, row, col, r):
@@ -72,7 +105,7 @@ class LogLinearModel(nn.Module):
             row.append(r)
             col.append(self.feature2index[k])
 
-    def _get_index(self, name):
+    def _get_index(self, name, feature2index):
         if name in self.feature2index: return self.feature2index[name]
         else:
             self.feature2index[name] = len(self.feature2index)
@@ -83,6 +116,7 @@ class LogLinearModel(nn.Module):
         assert name in self.feature2index
         return self.weights[self.feature2index[name]]
 
+    # FIXME what is this
     def get_prob(self, child, candidate):
         if (child, candidate) in self.prob_cache: return self.prob_cache[(child, candidate)]
         candidates = set(self.get_candidates(child))
@@ -96,6 +130,7 @@ class LogLinearModel(nn.Module):
             self.prob_cache[(child, cand)] = scores[cand] / z
         return self.prob_cache[(child, candidate)]
 
+    # FIXME what is this
     def score_candidate(self, child, candidate):
         s = 0.0
         for k, v in self.get_raw_features(child, candidate).items():
@@ -104,15 +139,18 @@ class LogLinearModel(nn.Module):
                 s += v * self.weights[ind]
         return s
 
+    # FIXME what is this
     def predict(self, word):
         scores = [(self.score_candidate(word, candidate), candidate) for candidate in self.get_candidates(word)]
         best = max(scores, key=itemgetter(0))
         return best[1]
 
+    # FIXME what is this
     def segment(self, word, mode='surface'):
         path = self.get_seg_path(word)
         return path.get_segmentation(mode=mode)
 
+    # FIXME what is this
     def get_seg_path(self, word):
         path = Path(word)
         while not path.is_ended():

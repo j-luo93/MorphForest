@@ -19,19 +19,28 @@ def parse_args():
     add_argument('--seed', default=1234, type=int, help='random seed, default 1234')
     add_argument('--alpha', '-a', default=0.001, type=float, help='alpha value for ILP')
     add_argument('--beta', '-b', default=1.0, type=float, help='beta value for ILP')
-    add_argument('--debug', action='store_true', help='debug mode, default false')
+    add_argument('--debug', default=False, dtype=bool, help='debug mode, default false')
+    add_argument('--strict_wv', default=True, dtype=bool, help='strict wv mode that does not allow oov')
+    add_argument('--inductive', default=True, dtype=bool, help='inductive mode')
+    add_argument('--use_word_vectors', default=False, dtype=bool, help='use word vectors')
     add_argument('--load', '-l', help='file to load the model from')
     add_argument('--save', '-s', help='file to save the model to')  # TODO saving should happen every iteration.
-    add_argument('--iter', default=5, type=int, help='number of ILP iterations')
+    add_argument('--iteration', default=5, type=int, help='number of ILP iterations')
     add_argument('--data_path,', '-d', dest='data_path', default='data/', help='folder where data are kept')
     # TODO this is for testing?
     add_argument('--input_file,', '-I', help='input file, a list of words for which the trained model is used')
     add_argument('--output_file,', '-O', help='output file')
-    add_argument('--reg_l2', default=1.0, type=float, help='regularization hyperparameter for l2 loss')
+    add_argument('--reg_hyper', default=1.0, type=float, help='regularization hyperparameter for l2 loss')
+    add_argument('--learning_rate', '-lr', default=1e-1, type=float, help='initial learning rate')
+    add_argument('--default_oov', default=-0.5, type=float, help='default wv cosine similarity for oov')
     add_argument('--wv_dim', default=200, type=int, help='word vector dimensionality')
+    add_argument('--max_epoch', default=1000, type=int, help='max number of epochs per iteration')
+    add_argument('--check_interval', '-ci', default=100, type=int, help='check interval')
     args = parser.parse_args()
 
     random.seed(args.seed)
+    if args.supervised:
+        raise NotImplementedError('Supervised mode not supported yet.')
     return args
 
 
@@ -47,6 +56,7 @@ if __name__ == "__main__":
         model = pickle.load(open(args.load, 'r'))
         logging.info('Done loading')
     else:
+        # FIXME call manager instead
         m = MC(**vars(args))
         m.read_all_data()
 
