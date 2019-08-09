@@ -1,4 +1,5 @@
 import torch.nn as nn
+import torch.sparse as sp
 import logging
 
 from enlighten import Counter
@@ -16,7 +17,7 @@ class LogLinearModel(nn.Module):
         max_r_num, max_r_den = 0, 0
         pbar = Counter()
         logging.info('First pass to gather info...')
-        for word_i, word in enumerate(pbar(batch.train_set)):
+        for word in pbar(batch.train_set):
             # if self.supervised and word not in self.gold_parents: continue
             acc = 0
             for neighbor in self.feature_ext.get_neighbors(word, expand=False):
@@ -36,7 +37,6 @@ class LogLinearModel(nn.Module):
         for word_i, word in enumerate(pbar(batch.wordlist)):
             # if self.supervised and word not in self.gold_parents: continue
             r_num, r_den = max_r_num * i, max_r_den * i
-            # FIXME a lot of methods go into `feature_ext` now.
             for neighbor in self.feature_ext.get_neighbors(word, expand=False):
                 candidates = self.feature_ext.get_candidates(neighbor, gold=False)
                 for candidate in candidates:
@@ -44,7 +44,7 @@ class LogLinearModel(nn.Module):
                     self._populate_coordinates(features, data_den, row_den, col_den, r_den)
                     cnt_den.append(1.0)
                     r_den += 1
-            for r in range(r_den, max_r_den * (i + 1)):
+            for _ in range(r_den, max_r_den * (i + 1)):
                 cnt_den.append(0.0)
             candidates = self.feature_ext.get_candidates(word, gold=True)
             for candidate in candidates:
@@ -55,7 +55,7 @@ class LogLinearModel(nn.Module):
             for r in range(r_num, max_r_num * (i + 1)):
                 cnt_num.append(0.0)
             i += 1
-        logging.info('Num of features for MC is', len(self.feature2index))
+        logging.info(f'Num of features for MC is {len(self.feature2index)}')
 
         # NOTE Old theano code.
         # weights = [0.0] * len(feature2index)
@@ -142,7 +142,7 @@ class LogLinearModel(nn.Module):
     # FIXME what is this
     def predict(self, word):
         scores = [(self.score_candidate(word, candidate), candidate) for candidate in self.get_candidates(word)]
-        best = max(scores, key=itemgetter(0))
+        best = max(scores, key=lambda x: x[0])
         return best[1]
 
     # FIXME what is this

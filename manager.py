@@ -1,24 +1,24 @@
 from arglib import use_arguments_as_properties
-from .trainer import Trainer
+
 from .data_preparer import DataPreparer
 from .log_linear import LogLinearModel
+from .trainer import Trainer
 
 
 @use_arguments_as_properties('supervised', 'lang', 'log_dir')
 class Manager:
 
     def __init__(self):
-        self.data_preparer = DataPreparer()  # FIXME
-        self.mc_model =  MC()
+        self.data_preparer = DataPreparer()
+        self.mc_model = MC()
         self.ll_model = LogLinearModel()
-        self.trainer = Trainer(self.mc_model, self.ll_model)  # FIXME
+        self.trainer = Trainer(self.mc_model, self.ll_model)
 
     def train(self, reread=True):
         if reread:
             self.data_preparer.read_all_data()
         # if not self.supervised:
-        self.trainer.train(self.data_preparer.??)  # FIXME
-        self.trainer.update_pruner()  # FIXME
+        self.trainer.train(self.data_preparer)
         # NOTE Commented out supervised mode.
         # else:
         #     raise NotImplementedError('Not implemented. Should not have come here.')

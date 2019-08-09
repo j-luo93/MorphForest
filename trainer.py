@@ -102,7 +102,7 @@ class Trainer:
         return (p, r, f)
 
     def update_pruner(self, pruner):
-        # FIXME
+        # TODO for ILP
         self.pruner = pruner
         for p in pruner['pre']:
             if p in self.mc_model.prefixes:
