@@ -8,6 +8,8 @@ Rewritten in python based on Evaluate.java, originally
  * Different evaluation routines
  */
 '''
+
+
 def evaluate(gold_seg_file, pred_seg_file, quiet=False, debug=False):
 
     def get_seg_points(segmentation):
@@ -91,6 +93,6 @@ def evaluate(gold_seg_file, pred_seg_file, quiet=False, debug=False):
     p = correct / pred_total
     r = correct / gold_total
     f = 2 * p * r / (p + r)
-    print("Correct: %s\tGoldTotal: %s\tPredTotal: %s" %(correct, gold_total, pred_total))
-    print("Precision: %s\tRecall: %s\tF1: %s" %(p, r, f))
+    print("Correct: %s\tGoldTotal: %s\tPredTotal: %s" % (correct, gold_total, pred_total))
+    print("Precision: %s\tRecall: %s\tF1: %s" % (p, r, f))
     return (p, r, f)

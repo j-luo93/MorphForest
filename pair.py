@@ -32,7 +32,7 @@ class ChildParentPair(object):
                 affix = self.child[len(self.parent):]
             elif self.type_ == 'MODIFY':
                 affix = self.child[len(self.parent):]
-                trans = 'MOD_' + self.parent[-1] + '_' +  self.child[len(self.parent) - 1]
+                trans = 'MOD_' + self.parent[-1] + '_' + self.child[len(self.parent) - 1]
             elif self.type_ == 'DELETE':
                 affix = self.child[len(self.parent) - 1:]
                 trans = 'DEL_' + self.parent[-1]
@@ -41,7 +41,7 @@ class ChildParentPair(object):
                 affix = self.child[len(self.parent) + 1:]
                 trans = 'REP_' + self.parent[-1]
             else:
-                raise NotImplementedError, 'no such type %s' %(self.type_)
+                raise NotImplementedError('no such type %s' % (self.type_))
             self.affix = affix
             self.trans = trans
         return affix, trans
