@@ -8,7 +8,7 @@ from torch.optim import Adam
 
 from arglib import use_arguments_as_properties
 from dev_misc import Metric, Metrics, clear_cache, log_pp
-from evaluate import evaluate
+from mf.utils.evaluate import evaluate
 
 _manager = enlighten.Manager()
 

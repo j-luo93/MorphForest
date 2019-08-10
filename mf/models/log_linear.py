@@ -8,8 +8,7 @@ from enlighten import Counter
 
 from arglib import use_arguments_as_properties
 from dev_misc import Map, Metric, Metrics, cache
-
-from .path import Path
+from mf.utils.path import Path
 
 
 @use_arguments_as_properties('lang')

@@ -1,9 +1,9 @@
 from arglib import use_arguments_as_properties
+from mf.dataset.data_preparer import DataPreparer
+from mf.models.feature_extractor import FeatureExtractor
+from mf.models.log_linear import LogLinearModel
 
-from .data_preparer import DataPreparer
-from .log_linear import LogLinearModel
 from .trainer import Trainer
-from .feature_extractor import FeatureExtractor
 
 
 @use_arguments_as_properties('supervised', 'lang', 'log_dir')

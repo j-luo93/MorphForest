@@ -1,6 +1,3 @@
-from __future__ import division, print_function
-import codecs
-
 '''
 Rewritten in python based on Evaluate.java, originally
 /**
@@ -46,7 +43,7 @@ def evaluate(gold_seg_file, pred_seg_file, quiet=False, debug=False):
 
     gold_segs = dict()
     # print(0)
-    with codecs.open(gold_seg_file, 'r', encoding='utf8', errors='strict') as fin:
+    with open(gold_seg_file, 'r', encoding='utf8') as fin:
         for line in fin:
             # line = line.encode('utf8')
             # if line[:5] == 'piirr': print(list(line))
@@ -55,7 +52,7 @@ def evaluate(gold_seg_file, pred_seg_file, quiet=False, debug=False):
             segs = ':'.join(segs[: len(segs) // 2]), ':'.join(segs[len(segs) // 2:])
             gold_segs[segs[0]] = segs[1].split()
     pred_segs = dict()
-    with codecs.open(pred_seg_file, 'r', encoding='utf8', errors='strict') as fin:
+    with open(pred_seg_file, 'r', encoding='utf8') as fin:
         try:
             for line in fin:
                 # if line[:5] == 'piirr': print(list(line))

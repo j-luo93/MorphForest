@@ -2,11 +2,10 @@ import logging
 import pathlib
 from collections import Counter, defaultdict
 
-from dev_misc import Map
 from arglib import use_arguments_as_properties
-from dev_misc import log_this
+from dev_misc import Map, log_this
 
-from .word_vectors import WordVectors, DummyWordVectors
+from .word_vectors import DummyWordVectors, WordVectors
 
 
 @use_arguments_as_properties('data_path', 'lang', 'log_dir', 'gold_affixes', 'top_affixes', 'top_words', 'inductive', 'use_word_vectors')

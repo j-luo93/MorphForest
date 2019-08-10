@@ -1,9 +1,8 @@
-from dev_misc import cache
 import math
 
-from .pair import ChildParentPair as Pair
-
 from arglib import use_arguments_as_properties
+from dev_misc import cache
+from mf.utils.pair import ChildParentPair as Pair
 
 EN_ALPHABET = 'abcdefghijklmnopqrstuvwxyz'
 

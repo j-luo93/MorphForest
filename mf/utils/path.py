@@ -1,7 +1,7 @@
-from __future__ import division, print_function
-
-from pair import ChildParentPair as Pair
 import sys
+
+from .pair import ChildParentPair as Pair
+
 
 class Path(object):
 
@@ -49,7 +49,7 @@ class Path(object):
             return self._segment_iter(p1).splice(self._segment_iter(p2))
         else:
             return self._segment_iter(parent).extend(pair)
-            
+
     # The root is the concatenation of stems.
     def get_root(self, mode='surface'):
         assert mode in ['surface', 'canonical']
@@ -60,6 +60,8 @@ class Path(object):
         return ''.join([x for x, y in filter(lambda item: item[0] if item[1] == 'stem' else '', zip(segs.split('-'), self.seg.label.split('-')))])
 
 # Could have multipile morphemes
+
+
 class Segment(object):
 
     # label can be a hyphenated list of 'stem', 'suf', or 'pre'

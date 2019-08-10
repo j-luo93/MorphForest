@@ -2,8 +2,9 @@ import csv
 from abc import ABC, abstractmethod
 
 import pandas as pd
-from arglib import use_arguments_as_properties
 from scipy.spatial.distance import cosine as cos_dist
+
+from arglib import use_arguments_as_properties
 
 
 class BaseWordVectors(ABC):
