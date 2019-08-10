@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 from pathlib import Path
 
@@ -7,7 +8,7 @@ import torch
 from torch.optim import Adam
 
 from arglib import use_arguments_as_properties
-from dev_misc import Metric, Metrics, clear_cache, log_pp
+from dev_misc import Metric, Metrics, clear_cache, get_tensor, log_pp
 from mf.utils.evaluate import evaluate
 
 _manager = enlighten.Manager()
@@ -43,12 +44,16 @@ class Trainer:
         batch = dataset.get_batch()
         # Clear cache first.
         clear_cache()
-        # Start the iteration.
-        self._start_iteration()
         # First pass to gather dataset-specific information and prepare weights.
         self.ll_model.first_pass(batch)
+        # Move everything to cuda if specified.
+        if os.environ.get('CUDA_VISIBLE_DEVICES', False):
+            self.ll_model.cuda()
+            batch.apply(get_tensor, ignore_all=True)
         # Get a new optimizer for each iteration.
         optimizer = Adam(self.ll_model.parameters(), lr=self.learning_rate)
+        # Start the iteration.
+        self._start_iteration()
         # Main body.
         metrics = Metrics()
         while not self._ended_iteration():
@@ -79,7 +84,7 @@ class Trainer:
         return metrics
 
     def _do_check(self, metrics):
-        log_pp(metrics.get_table())
+        log_pp(metrics.get_table(title=f'Epoch = {self.epoch}'))
 
     def save(self, dataset):
         torch.save(self.ll_model.state_dict(), f'{self.log_dir}/saved.latest')

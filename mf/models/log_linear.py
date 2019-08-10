@@ -5,10 +5,18 @@ import torch
 import torch.nn as nn
 import torch.sparse as sp
 from enlighten import Counter
+from tqdm import tqdm
 
 from arglib import use_arguments_as_properties
 from dev_misc import Map, Metric, Metrics, cache
 from mf.utils.path import Path
+
+
+def _safe_save(tensor):
+    if tensor.is_sparse:
+        return {'indices': tensor._indices(), 'values': tensor._values()}
+    else:
+        return tensor
 
 
 @use_arguments_as_properties('lang')
@@ -21,9 +29,8 @@ class LogLinearModel(nn.Module):
     def first_pass(self, batch):
         """First pass to know the how many paddings we need."""
         max_r_num, max_r_den = 0, 0
-        pbar = Counter()
         logging.info('First pass to gather info...')
-        for word in pbar(batch.wordlist):
+        for word in tqdm(batch.wordlist):
             # if self.supervised and word not in self.gold_parents: continue
             acc = 0
             for neighbor in self.feature_ext.get_neighbors(word, expand=False):
@@ -39,8 +46,7 @@ class LogLinearModel(nn.Module):
         cnt_num, cnt_den = list(), list()
         logging.info('Building sparse matrix for MC...')
         i = 0
-        pbar = Counter()
-        for word_i, word in enumerate(pbar(batch.wordlist)):
+        for word_i, word in enumerate(tqdm(batch.wordlist)):
             # if self.supervised and word not in self.gold_parents: continue
             r_num, r_den = max_r_num * i, max_r_den * i
             for neighbor in self.feature_ext.get_neighbors(word, expand=False):
@@ -79,8 +85,8 @@ class LogLinearModel(nn.Module):
         # Build matrix.
         N = len(batch.wordlist)
         M = len(self.feature2index)
-        self.cnt_num = torch.FloatTensor(cnt_num)
-        self.cnt_den = torch.FloatTensor(cnt_den)
+        self.register_buffer('cnt_num', torch.FloatTensor(cnt_num))
+        self.register_buffer('cnt_den', torch.FloatTensor(cnt_den))
         row_num = torch.LongTensor(row_num)
         col_num = torch.LongTensor(col_num)
         row_den = torch.LongTensor(row_den)
@@ -88,21 +94,31 @@ class LogLinearModel(nn.Module):
         # Get numerator.
         indices_num = torch.stack([row_num, col_num], dim=0)
         values_num = torch.FloatTensor(data_num).float()
-        self.numerator = sp.FloatTensor(indices_num, values_num, [N * max_r_num, M])
+        self.register_buffer('numerator', sp.FloatTensor(indices_num, values_num, [N * max_r_num, M]))
         # Get denominator.
         indices_den = torch.stack([row_den, col_den], dim=0)
         values_den = torch.FloatTensor(data_den).float()
-        self.denominator = sp.FloatTensor(indices_den, values_den, [N * max_r_den, M])
+        self.register_buffer('denominator', sp.FloatTensor(indices_den, values_den, [N * max_r_den, M]))
         self.weights = nn.Parameter(torch.zeros(M))
+
+    logging.warning('`state_dict` does not consider any child module.')
+
+    def state_dict(self):
+        ret = dict()
+        for name, buf in self.named_buffers():
+            ret[name] = _safe_save(buf)
+        for name, param in self.named_parameters():
+            ret[name] = _safe_save(param)
+        return ret
 
     def forward(self, batch):
         N = len(batch.wordlist)
-        den = ((self.denominator @ self.weights.view(-1, 1)).exp() * self.cnt_den).view(N, -1)
-        num = ((self.numerator @ self.weights.view(-1, 1)).exp() * self.cnt_num).view(N, -1)
+        den = ((self.denominator @ self.weights.view(-1, 1)).squeeze(dim=1).exp() * self.cnt_den).view(N, -1)
+        num = ((self.numerator @ self.weights.view(-1, 1)).squeeze(dim=1).exp() * self.cnt_num).view(N, -1)
         nll = -(num.sum(dim=1) / den.sum(dim=1)).log().sum()
         nll = Metric('nll', nll, batch.num_samples)
         reg_l2 = (self.weights ** 2).sum()
-        reg_l2 = Metric('reg_l2', reg_l2, batch.num_samples)
+        reg_l2 = Metric('reg_l2', reg_l2, 1.0)  # batch.num_samples)
         return Metrics(nll, reg_l2)
 
     # populate coordinates with features, expanding feature set along the way

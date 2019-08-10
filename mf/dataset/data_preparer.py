@@ -12,14 +12,14 @@ from .word_vectors import DummyWordVectors, WordVectors
 class DataPreparer:
 
     def __init__(self):
-        self.word_vector_file = self.data_path + 'wv.%s' % self.lang
-        self.gold_segs_file = self.data_path + 'gold.%s' % self.lang
-        self.wordlist_file = self.data_path + 'wordlist.%s' % self.lang
-        self.predicted_file = {'train': self.log_dir + 'pred.train.%s' % self.lang,
-                               'test': self.log_dir + 'pred.test.%s' % self.lang}
+        self.word_vector_file = self.data_path + '/wv.%s' % self.lang
+        self.gold_segs_file = self.data_path + '/gold.%s' % self.lang
+        self.wordlist_file = self.data_path + '/wordlist.%s' % self.lang
+        self.predicted_file = {'train': self.log_dir + '/pred.train.%s' % self.lang,
+                               'test': self.log_dir + '/pred.test.%s' % self.lang}
         if self.gold_affixes:
-            self.gold_affix_file = {'pre': self.data_path + 'gold_pre.%s' % self.lang,
-                                    'suf': self.data_path + 'gold_suf.%s' % self.lang}
+            self.gold_affix_file = {'pre': self.data_path + '/gold_pre.%s' % self.lang,
+                                    'suf': self.data_path + '/gold_suf.%s' % self.lang}
 
         self.read_wordlist()
         self.read_word_vectors()
@@ -101,8 +101,10 @@ class DataPreparer:
             for word in self.train_set:
                 for pos in range(1, len(word)):
                     left, right = word[:pos], word[pos:]
-                    if left in self.word_cnt: suf_cnt[right] += 1
-                    if right in self.word_cnt: pre_cnt[left] += 1
+                    suf_cnt[right] += 1
+                    pre_cnt[left] += 1
+                    # if left in self.word_cnt: suf_cnt[right] += 1
+                    # if right in self.word_cnt: pre_cnt[left] += 1
             suf_cnt = sorted(suf_cnt.items(), key=lambda x: x[1], reverse=True)
             pre_cnt = sorted(pre_cnt.items(), key=lambda x: x[1], reverse=True)
             self.suffixes = set([suf for suf, cnt in suf_cnt[:self.top_affixes]])

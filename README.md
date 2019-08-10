@@ -2,6 +2,7 @@
 * (Almost) completely rewrote the codebase.
 * Migrated to Python 3.7.
 * Files are expected to be in utf8 encoding. `_standardize` method is removed -- data cleaning should not be handled by this codebase.
+* Use two-lettered language code instead three-lettered. For instance, use `en` instead of `eng` for English.
 
 # MorphForest
 Code for the paper [Unsupervised Learning of Morphological Forest](http://people.csail.mit.edu/j_luo/assets/publications/MorphForest.pdf) (to appear in TACL 2017).

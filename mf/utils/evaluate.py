@@ -87,9 +87,16 @@ def evaluate(gold_seg_file, pred_seg_file, quiet=False, debug=False):
         print_segs(correct_segs)
         print("\nAll segmentations:")
         print_segs(pred_segs)
-    p = correct / pred_total
-    r = correct / gold_total
-    f = 2 * p * r / (p + r)
+
+    def safe_div(num, den):
+        if abs(den) < 1e-8:
+            assert abs(num) <= 1e-8
+            return 0.0
+        else:
+            return num / den
+    p = safe_div(correct, pred_total)
+    r = safe_div(correct, gold_total)
+    f = safe_div(2 * p * r, (p + r))
     print("Correct: %s\tGoldTotal: %s\tPredTotal: %s" % (correct, gold_total, pred_total))
     print("Precision: %s\tRecall: %s\tF1: %s" % (p, r, f))
     return (p, r, f)

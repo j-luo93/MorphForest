@@ -1,17 +1,22 @@
 import logging
+import os
 import pickle
 import random
+
+import torch
 
 from arglib import parser
 from dev_misc import Map, create_logger
 from mf.configs import registry
 from mf.training.manager import Manager
+
 # from ILP import ILP as ILP
 # from model import MC
 
 
 def parse_args():
-    parser.add_argument('--lang', dtype=str, help='language')  # TODO add cfg
+    parser.add_argument('--lang', dtype=str, help='language')
+    parser.add_argument('--gpu', '-g', dtype=str, help='gpu to use')
     parser.add_argument('--top_affixes', '-A', dtype=int, help='top K frequent affixes to use')
     parser.add_argument('--top_words', '-W', default=5000, dtype=int, help='top K words to use')
     parser.add_argument('--compounding', default=False, dtype=bool, help='use compounding, default False')
@@ -27,10 +32,11 @@ def parse_args():
     parser.add_argument('--inductive', default=True, dtype=bool, help='inductive mode')
     parser.add_argument('--use_word_vectors', default=False, dtype=bool, help='use word vectors')
     parser.add_argument('--load', '-l', help='file to load the model from')
-    parser.add_argument('--save', '-s', help='file to save the model to')  # TODO saving should happen every iteration.
+    parser.add_argument('--save', '-s', help='file to save the model to')
     parser.add_argument('--iteration', default=5, dtype=int, help='number of ILP iterations')
     parser.add_argument('--data_path,', '-d', default='data/',
-                        help='folder where data are kept')  # TODO this is for testing?
+                        help='folder where data are kept')
+    # TODO this is for testing?
     parser.add_argument('--input_file,', '-I', help='input file, a list of words for which the trained model is used')
     parser.add_argument('--output_file,', '-O', help='output file')
     parser.add_argument('--reg_hyper', default=1.0, dtype=float, help='regularization hyperparameter for l2 loss')
@@ -45,6 +51,9 @@ def parse_args():
     random.seed(args.seed)
     if args.supervised:
         raise NotImplementedError('Supervised mode not supported yet.')
+    if args.gpu is not None:
+        torch.cuda.set_device(int(args.gpu))  # HACK
+        os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     return args
 
 

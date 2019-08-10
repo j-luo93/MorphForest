@@ -24,11 +24,12 @@ class DummyWordVectors(BaseWordVectors):
 class WordVectors:
 
     def __init__(self, wv_path):
-        df = pd.read_csv(wv_path, skiprows=1, sep=' ', encoding='utf8',
+        df = pd.read_csv(wv_path, sep=' ', encoding='utf8',
                          keep_default_na=False, quoting=csv.QUOTE_NONE, header=None)
         self._words = df[0].values
         self._word2id = {word: idx for idx, word in enumerate(self._words)}
-        self._vectors = df.iloc[1: self.wv_dim + 1].values
+        self._vectors = df.iloc[:, 1: self.wv_dim + 1].values
+        assert len(self._words) == len(self._vectors) == len(self._word2id)
         assert -1 <= self.default_oov <= 1
 
     def __getitem__(self, word):
