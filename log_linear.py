@@ -1,9 +1,14 @@
+import logging
+import math
+
+import torch
 import torch.nn as nn
 import torch.sparse as sp
-import logging
-
 from enlighten import Counter
-from dev_misc import cache, Map, Metrics, Metric
+
+from dev_misc import Map, Metric, Metrics, cache
+
+from .path import Path
 
 
 class LogLinearModel(nn.Module):
@@ -85,12 +90,13 @@ class LogLinearModel(nn.Module):
         indices_den = torch.stack([row_den, col_den], dim=0)
         values_den = torch.from_denpy(data_den).float()
         self.denominator = sp.FloatTensor(indices_den, values_den, [N * max_r_den, M])
+        self.weights = nn.Parameter(torch.zeros(M))
 
     def forward(self, batch):
         self._first_pass(batch)
-        den = ((self.denominator @ self.weights).exp() * self.cnt_den).vie(N, max_r_den)
-        self.weights = nn.Parameter(torch.zeros(M))
-        num = ((self.numerator_num @ self.weights).exp() * self.cnt_num).vie(N, max_r_num)
+        N = len(batch.wordlist)
+        den = ((self.denominator @ self.weights).exp() * self.cnt_den).vie(N, -1)
+        num = ((self.numerator_num @ self.weights).exp() * self.cnt_num).vie(N, -1)
         nll = -(num.sum(dim=1) / den.sum(dim=1)).log().sum()
         nll = Metric('nll', nll, batch.num_samples)
         reg_l2 = (self.weights ** 2).sum()
@@ -105,7 +111,7 @@ class LogLinearModel(nn.Module):
             row.append(r)
             col.append(self.feature2index[k])
 
-    def _get_index(self, name, feature2index):
+    def _get_index(self, name):
         if name in self.feature2index: return self.feature2index[name]
         else:
             self.feature2index[name] = len(self.feature2index)
@@ -116,41 +122,42 @@ class LogLinearModel(nn.Module):
         assert name in self.feature2index
         return self.weights[self.feature2index[name]]
 
-    # FIXME what is this
-    def get_prob(self, child, candidate):
-        if (child, candidate) in self.prob_cache: return self.prob_cache[(child, candidate)]
-        candidates = set(self.get_candidates(child))
+    @cache(persist=False, full=True)
+    def get_probs_for_child(self, child):
+        candidates = set(self.feature_ext.get_candidates(child))
         # # this is a bit messy
         # if child in self.gold_parents:
         #     candidates.add(self.gold_parents[child])
         # candidates.add(candidate)
         scores = {cand: math.exp(self.score_candidate(child, cand)) for cand in candidates}
         z = sum(scores.values())
+        ret = dict()
         for cand in candidates:
-            self.prob_cache[(child, cand)] = scores[cand] / z
-        return self.prob_cache[(child, candidate)]
+            ret[(child, cand)] = scores[cand] / z
+        return ret
 
-    # FIXME what is this
+    def get_prob(self, child, candidate):
+        all_probs = self.get_probs_for_child(child)
+        return all_probs[(child, candidate)]
+
     def score_candidate(self, child, candidate):
         s = 0.0
-        for k, v in self.get_raw_features(child, candidate).items():
+        for k, v in self.feature_ext.get_raw_features(child, candidate).items():
             if k in self.feature2index:
                 ind = self.feature2index[k]
                 s += v * self.weights[ind]
         return s
 
-    # FIXME what is this
     def predict(self, word):
-        scores = [(self.score_candidate(word, candidate), candidate) for candidate in self.get_candidates(word)]
+        scores = [(self.score_candidate(word, candidate), candidate)
+                  for candidate in self.feature_ext.get_candidates(word)]
         best = max(scores, key=lambda x: x[0])
         return best[1]
 
-    # FIXME what is this
     def segment(self, word, mode='surface'):
         path = self.get_seg_path(word)
         return path.get_segmentation(mode=mode)
 
-    # FIXME what is this
     def get_seg_path(self, word):
         path = Path(word)
         while not path.is_ended():

@@ -25,14 +25,12 @@ from .feature_extractor import FeatureExtractor
 from .word_vectors import WordVectors
 
 
-
 @use_arguments_as_properties('lang', 'top_affixes', 'top_words', 'compounding', 'sibling', 'debug')
 class MC:
 
     ############################# Initialization ###############################
 
     def __init__(self):
-
 
         self.pruner = None
 
@@ -47,10 +45,10 @@ class MC:
             self.wordlist_file += '.toy'
             self.gold_segs_file += '.toy'
 
-        self.feature_extractor = FeatureExtractor()  # FIXME
-
+        self.feature_extractor = FeatureExtractor()
 
     # TODO looks weird. Put this in trainer.
+
     def _save_model_params(self):
         print('-----------------------------------', file=sys.stderr)
         print('language\t', self.lang, '\ncompounding\t', self.compounding,
@@ -61,6 +59,5 @@ class MC:
               '\ngold_affixes\t', hasattr(self, 'gold_affix_file'), '\t', self.top_affixes, file=sys.stderr)
         print('out path\t', self.out_path, file=sys.stderr)
         print('-----------------------------------', file=sys.stderr)
-
 
     ############################# Candidates and neighbors #####################

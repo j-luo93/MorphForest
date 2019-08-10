@@ -10,9 +10,8 @@ class Manager:
 
     def __init__(self):
         self.data_preparer = DataPreparer()
-        self.mc_model = MC()
         self.ll_model = LogLinearModel()
-        self.trainer = Trainer(self.mc_model, self.ll_model)
+        self.trainer = Trainer(self.ll_model)
 
     def train(self, reread=True):
         if reread:

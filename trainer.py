@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 import torch
@@ -9,11 +10,10 @@ from dev_misc import Metric, Metrics, clear_cache, log_pp
 from evaluate import evaluate
 
 
-@use_arguments_as_properties('max_epoch', 'learning_rate', 'iteration', 'ILP', 'reg_hyper', 'check_interval')
+@use_arguments_as_properties('max_epoch', 'learning_rate', 'iteration', 'ILP', 'reg_hyper', 'check_interval', 'log_dir')
 class Trainer:
 
-    def __init__(self, mc_model, ll_model):
-        self.mc_model = mc_model
+    def __init__(self, ll_model):
         self.ll_model = ll_model
 
     @property
@@ -48,7 +48,7 @@ class Trainer:
             self._pbar.update()
             if self.epoch % self.check_interval == 0:
                 self._do_check(metrics)
-        self.save()
+        self.save(dataset)
 
     def _train_one_epoch(self, dataset, optimizer):
         """Each epoch is actually just one step since no minibatching is used."""
@@ -72,32 +72,33 @@ class Trainer:
     def _do_check(self, metrics):
         log_pp(metrics.get_table())
 
-    # FIXME This is weird
-    def save(self):
-        self.weights = w.get_value()
+    def save(self, dataset):
+        torch.save(self.ll_model.state_dict(), f'{self.log_dir}/saved.latest')
+        # self.weights = w.get_value()
         # write weights to log
         self.write_weights()
-        self.write_segments_to_file()
-        p, r, f = self.evaluate()
+        self.write_segments_to_file(dataset)
+        p, r, f = self.evaluate(dataset)
         print(p, r, f)
 
     def write_weights(self):
-        with codecs.open(self.mc_model.log_dir + 'MC.weights', 'w', 'utf8', errors='strict') as fout:
-            for i, v in sorted(list(enumerate(self.weights)), key=itemgetter(1), reverse=True):
-                tmp = '%s\t%f\n' % (self.index2feature[i], v)
+        with Path(f'{self.log_dir}/MC.weights').open('w', encoding='utf8') as fout:
+            weights = self.ll_model.weights.cpu()
+            for i, v in sorted(enumerate(weights), key=lambda x: x[1], reverse=True):
+                tmp = '%s\t%f\n' % (self.ll_model.index2feature[i], v)
                 fout.write(tmp)
 
-    def write_segments_to_file(self, wordset=None, out_file=None):
+    def write_segments_to_file(self, dataset, wordset=None, out_file=None):
         if not wordset:
-            wordset = set(self.mc_model.gold_segs.keys())
+            wordset = set(dataset.gold_segs.keys())
         if not out_file:
-            out_file = self.mc_model.predicted_file['train']
+            out_file = dataset.predicted_file['train']
         with Path(out_file).open('w', encoding='utf8') as fout:
             for word in enumerate(wordset):
-                fout.write(word + ':' + self.mc_model.segment(word) + '\n')  # FIXME segment method shouldn't be in ll
+                fout.write(word + ':' + self.ll_model.segment(word) + '\n')
 
-    def evaluate(self):
-        p, r, f = evaluate(self.mc_model.gold_segs_file, self.mc_model.predicted_file['train'], quiet=True)
+    def evaluate(self, dataset):
+        p, r, f = evaluate(dataset.gold_segs_file, dataset.predicted_file['train'], quiet=True)
         logging.info(f'MC: p/r/f = {p}/{r}/{f}')
         return (p, r, f)
 
