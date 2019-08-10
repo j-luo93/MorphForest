@@ -1,5 +1,3 @@
-from __future__ import division, print_function
-
 from gurobipy import *
 from path import Path
 from evaluate import evaluate
@@ -10,6 +8,7 @@ import math
 import sys
 import codecs
 
+
 class ILP(object):
 
     def __init__(self, base, alpha, beta):
@@ -19,7 +18,8 @@ class ILP(object):
 
         self.pruner = {type_: set() for type_ in ['suf', 'pre', 'MODIFY', 'DELETE', 'REPEAT']}
 
-        self.out_file = self.base.out_path + 'ILP.%s.%s.%s' %(self.base.lang, self.base.top_affixes, self.base.top_words)
+        self.out_file = self.base.out_path + \
+            'ILP.%s.%s.%s' % (self.base.lang, self.base.top_affixes, self.base.top_words)
         self.seeds = self.base.decompose(self.base.train_set)
 
         print('-----------------------------------', file=sys.stderr)
@@ -35,7 +35,7 @@ class ILP(object):
         # X variables for choosing which candidate
         print('Setting up X variables...')
         for i, w in enumerate(self.fringe):
-            print('\r%d/%d' %(i + 1, len(self.fringe)), end='')
+            print('\r%d/%d' % (i + 1, len(self.fringe)), end='')
             sys.stdout.flush()
             for cand in self.base.get_candidates(w):
                 self.model.addVar(vtype=GRB.BINARY, name=self._get_name('x', w, cand=cand))
@@ -45,7 +45,7 @@ class ILP(object):
         # z variables for affixes and transformations
         print('Setting up Z variables...')
         for i, w in enumerate(self.fringe):
-            print('\r%d/%d' %(i + 1, len(self.fringe)), end='')
+            print('\r%d/%d' % (i + 1, len(self.fringe)), end='')
             sys.stdout.flush()
             for cand in self.base.get_candidates(w):
                 if cand[1] == 'STOP': continue
@@ -75,7 +75,7 @@ class ILP(object):
         # constraints
         print('Setting up constraints...')
         for i, w in enumerate(self.fringe):
-            print('\r%d/%d' %(i + 1, len(self.fringe)), end='')
+            print('\r%d/%d' % (i + 1, len(self.fringe)), end='')
             sys.stdout.flush()
             vars_ = list()
             for cand in self.base.get_candidates(w):
@@ -99,12 +99,12 @@ class ILP(object):
                 if affix:
                     name = self._get_name('z', pair.type_coarse, affix)
                     v = self.model.getVarByName(name)
-                    assert var and v , (name_var, name)
+                    assert var and v, (name_var, name)
                     self.model.addConstr(var <= v, name=self._get_name('c', name_var, name))
                 if trans:
                     name = self._get_name('z', trans)
                     v = self.model.getVarByName(name)
-                    assert var and v , (name_var, name)
+                    assert var and v, (name_var, name)
                     self.model.addConstr(var <= v, name=self._get_name('c', name_var, name))
             self.model.addConstr(LinExpr([1.0] * len(vars_), vars_) == 1, name=self._get_name('c', w))
         print()
@@ -114,8 +114,8 @@ class ILP(object):
 
     def _get_name(self, prefix, *args, **kwargs):
         name = prefix + '_' + '_'.join(args)
-        if 'cand' not in kwargs: 
-    	    if len(name) > 200: 
+        if 'cand' not in kwargs:
+            if len(name) > 200:
                 name = str(hash(name))
             return name
 
@@ -126,12 +126,12 @@ class ILP(object):
             name += '_' + parent[0] + '_' + parent[1]
         else:
             name += '_' + parent
-        if len(name) > 200: 
+        if len(name) > 200:
             name = str(hash(name))
         return name
 
     def run(self):
-        self.N = 0 # normalization factor
+        self.N = 0  # normalization factor
         self.model = None
         self.kept = defaultdict(set)
         n_iter = 0
@@ -201,10 +201,10 @@ class ILP(object):
     def update_pruner(self, kept):
         all_ = defaultdict(set)
         alphabet = 'abcdefghijklmnopqrstuvwxyz'
-        all_['REPEAT'] = set(['REP_%s' %s for s in alphabet])
-        all_['DELETE'] = set(['DEL_%s' %s for s in alphabet])
+        all_['REPEAT'] = set(['REP_%s' % s for s in alphabet])
+        all_['DELETE'] = set(['DEL_%s' % s for s in alphabet])
         for c1, c2 in permutations(alphabet, r=2):
-            all_['MODIFY'].add('MOD_%s_%s' %(c1, c2))
+            all_['MODIFY'].add('MOD_%s_%s' % (c1, c2))
         all_['pre'] = set(self.base.prefixes)
         all_['suf'] = set(self.base.suffixes)
         for key in all_:
@@ -229,9 +229,9 @@ class ILP(object):
             if v.x == 1.0:
                 return cand
         raise
-    
+
     def get_raw_features(self, child, candidate):
-    	return self.base.get_raw_features(child, candidate)
+        return self.base.get_raw_features(child, candidate)
 
     def get_seg_path(self, w):
         path = Path(w)
@@ -259,5 +259,5 @@ class ILP(object):
                 fout.write(w + ':' + path.get_segmentation() + '\n')
 
     def evaluate(self):
-        p ,r, f = evaluate(self.base.gold_segs_file, self.out_file, quiet=True)
+        p, r, f = evaluate(self.base.gold_segs_file, self.out_file, quiet=True)
         print('ILP: precision =', p, 'recall =', r, 'f =', f, file=sys.stderr)

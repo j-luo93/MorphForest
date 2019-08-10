@@ -18,11 +18,9 @@ from scipy.spatial.distance import cosine as cos_dist
 from arglib import use_arguments_as_properties
 from dev_misc import cache, clear_cache, log_this
 from pair import ChildParentPair as Pair
-from SGD import Adam
-from utils import Logger
 
-from .feature_extractor import FeatureExtractor
-from .word_vectors import WordVectors
+from mf.feature_extractor import FeatureExtractor
+from mf.word_vectors import WordVectors
 
 
 @use_arguments_as_properties('lang', 'top_affixes', 'top_words', 'compounding', 'sibling', 'debug')

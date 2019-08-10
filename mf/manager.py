@@ -3,6 +3,7 @@ from arglib import use_arguments_as_properties
 from .data_preparer import DataPreparer
 from .log_linear import LogLinearModel
 from .trainer import Trainer
+from .feature_extractor import FeatureExtractor
 
 
 @use_arguments_as_properties('supervised', 'lang', 'log_dir')
@@ -10,12 +11,13 @@ class Manager:
 
     def __init__(self):
         self.data_preparer = DataPreparer()
-        self.ll_model = LogLinearModel()
+        self.feature_ext = FeatureExtractor(self.data_preparer)
+        self.ll_model = LogLinearModel(self.feature_ext)
         self.trainer = Trainer(self.ll_model)
 
-    def train(self, reread=True):
-        if reread:
-            self.data_preparer.read_all_data()
+    def train(self):  # , reread=True):
+        # if reread:
+        #     self.data_preparer.read_all_data()
         # if not self.supervised:
         self.trainer.train(self.data_preparer)
         # NOTE Commented out supervised mode.

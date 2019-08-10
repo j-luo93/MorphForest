@@ -1,20 +1,22 @@
-from .manager import Manager
-import pickle
 import logging
-
-from arglib import add_argument, parse_args
-from dev_misc import create_logger
-from ILP import ILP as ILP
-from model import MC
+import pickle
 import random
 
+from arglib import add_argument, parse_args
+from dev_misc import create_logger, Map
+# from ILP import ILP as ILP
+from model import MC
 
-def parse_args():
+from mf.manager import Manager
+
+
+def get_args():
     add_argument('--lang', dtype=str, help='language')  # TODO add cfg
     add_argument('--top_affixes', '-A', dtype=int, help='top K frequent affixes to use')
     add_argument('--top_words', '-W', default=5000, dtype=int, help='top K words to use')
     add_argument('--compounding', default=False, dtype=bool, help='use compounding, default False')
     add_argument('--sibling', default=False, dtype=bool, help='use sibling feature, default False')
+    add_argument('--gold_affixes', default=False, dtype=bool, help='use gold affixes')
     add_argument('--supervised', default=False, dtype=bool, help='flag to use supervised')
     add_argument('--ILP', default=False, dtype=bool, help='ILP mode, default False')
     add_argument('--seed', default=1234, dtype=int, help='random seed, default 1234')
@@ -37,7 +39,7 @@ def parse_args():
     add_argument('--wv_dim', default=200, dtype=int, help='word vector dimensionality')
     add_argument('--max_epoch', default=1000, dtype=int, help='max number of epochs per iteration')
     add_argument('--check_interval', '-ci', default=100, dtype=int, help='check interval')
-    args = parse_args()
+    args = Map(**parse_args())
 
     random.seed(args.seed)
     if args.supervised:
@@ -51,9 +53,9 @@ def train():
 
 
 if __name__ == "__main__":
-    args = parse_args()
+    args = get_args()
 
-    create_logger(arg.log_dir)
+    create_logger(args.log_dir + '/log')
 
     if args.supervised:
         assert not args.ILP and not args.load

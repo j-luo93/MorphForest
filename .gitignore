@@ -3,3 +3,7 @@ out/*
 *.ipynb
 *.pyc
 .DS_Store
+
+.vscode
+log/*
+*.egg-info

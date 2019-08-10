@@ -6,23 +6,25 @@ import torch.nn as nn
 import torch.sparse as sp
 from enlighten import Counter
 
+from arglib import use_arguments_as_properties
 from dev_misc import Map, Metric, Metrics, cache
 
 from .path import Path
 
 
+@use_arguments_as_properties('lang')
 class LogLinearModel(nn.Module):
 
     def __init__(self, feature_ext):
+        super().__init__()
         self.feature_ext = feature_ext
 
-    @cache(persist=False)
-    def _first_pass(self, batch):
+    def first_pass(self, batch):
         """First pass to know the how many paddings we need."""
         max_r_num, max_r_den = 0, 0
         pbar = Counter()
         logging.info('First pass to gather info...')
-        for word in pbar(batch.train_set):
+        for word in pbar(batch.wordlist):
             # if self.supervised and word not in self.gold_parents: continue
             acc = 0
             for neighbor in self.feature_ext.get_neighbors(word, expand=False):
@@ -78,25 +80,26 @@ class LogLinearModel(nn.Module):
         # Build matrix.
         N = len(batch.wordlist)
         M = len(self.feature2index)
-        self.cnt_num = torch.from_numpy(cnt_num).float()
-        self.cnt_den = torch.from_numpy(cnt_den).float()
-        row_num = torch.from_numpy(row_num)
-        col_num = torch.from_numpy(col_num)
+        self.cnt_num = torch.FloatTensor(cnt_num)
+        self.cnt_den = torch.FloatTensor(cnt_den)
+        row_num = torch.LongTensor(row_num)
+        col_num = torch.LongTensor(col_num)
+        row_den = torch.LongTensor(row_den)
+        col_den = torch.LongTensor(col_den)
         # Get numerator.
         indices_num = torch.stack([row_num, col_num], dim=0)
-        values_num = torch.from_numpy(data_num).float()
+        values_num = torch.FloatTensor(data_num).float()
         self.numerator = sp.FloatTensor(indices_num, values_num, [N * max_r_num, M])
         # Get denominator.
         indices_den = torch.stack([row_den, col_den], dim=0)
-        values_den = torch.from_denpy(data_den).float()
+        values_den = torch.FloatTensor(data_den).float()
         self.denominator = sp.FloatTensor(indices_den, values_den, [N * max_r_den, M])
         self.weights = nn.Parameter(torch.zeros(M))
 
     def forward(self, batch):
-        self._first_pass(batch)
         N = len(batch.wordlist)
-        den = ((self.denominator @ self.weights).exp() * self.cnt_den).vie(N, -1)
-        num = ((self.numerator_num @ self.weights).exp() * self.cnt_num).vie(N, -1)
+        den = ((self.denominator @ self.weights.view(-1, 1)).exp() * self.cnt_den).view(N, -1)
+        num = ((self.numerator @ self.weights.view(-1, 1)).exp() * self.cnt_num).view(N, -1)
         nll = -(num.sum(dim=1) / den.sum(dim=1)).log().sum()
         nll = Metric('nll', nll, batch.num_samples)
         reg_l2 = (self.weights ** 2).sum()

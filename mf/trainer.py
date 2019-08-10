@@ -1,13 +1,16 @@
 import logging
+import time
 from pathlib import Path
 
+import enlighten
 import torch
-from enlighten import Counter
 from torch.optim import Adam
 
 from arglib import use_arguments_as_properties
 from dev_misc import Metric, Metrics, clear_cache, log_pp
 from evaluate import evaluate
+
+_manager = enlighten.Manager()
 
 
 @use_arguments_as_properties('max_epoch', 'learning_rate', 'iteration', 'ILP', 'reg_hyper', 'check_interval', 'log_dir')
@@ -15,13 +18,15 @@ class Trainer:
 
     def __init__(self, ll_model):
         self.ll_model = ll_model
+        self._pbar = _manager.counter(desc='epoch', total=self.max_epoch)
 
     @property
     def epoch(self):
         return self._pbar.count
 
     def _start_iteration(self):
-        self._pbar = Counter(desc='epoch', total=self.max_epoch)
+        self._pbar.count = 0
+        self._pbar.start = time.time()
 
     def _ended_iteration(self):
         return self._pbar.count >= self.max_epoch
@@ -34,23 +39,27 @@ class Trainer:
             self._train_one_iteration(dataset)
 
     def _train_one_iteration(self, dataset):
+        # NOTE Get a batch. This batch would be the same across all epochs.
+        batch = dataset.get_batch()
         # Clear cache first.
         clear_cache()
-        # Get a new optimizer for each iteration.
-        optimizer = Adam(self.ll_model.params(), lr=self.learning_rate)
         # Start the iteration.
-        self._start_iteration
+        self._start_iteration()
+        # First pass to gather dataset-specific information and prepare weights.
+        self.ll_model.first_pass(batch)
+        # Get a new optimizer for each iteration.
+        optimizer = Adam(self.ll_model.parameters(), lr=self.learning_rate)
         # Main body.
         metrics = Metrics()
         while not self._ended_iteration():
-            epoch_metrics = self._train_one_epoch(dataset, optimizer)
+            epoch_metrics = self._train_one_epoch(batch, optimizer)
             metrics += epoch_metrics
             self._pbar.update()
             if self.epoch % self.check_interval == 0:
                 self._do_check(metrics)
         self.save(dataset)
 
-    def _train_one_epoch(self, dataset, optimizer):
+    def _train_one_epoch(self, batch, optimizer):
         """Each epoch is actually just one step since no minibatching is used."""
         # Prepare.
         self.ll_model.zero_grad()
@@ -58,12 +67,12 @@ class Trainer:
         optimizer.zero_grad()
 
         # Forward pass. I chose to not use `weight_decay` provided by `torch.optim` to get a more explicit control of l2 regularization.
-        batch = dataset.get_batch()
         metrics = self.ll_model(batch)
-        loss = metrics.nll + self.reg_hyper * metrics.reg_l2
+        loss = metrics.nll.mean + self.reg_hyper * metrics.reg_l2.mean
+        loss = Metric('loss', loss * batch.num_samples, batch.num_samples)
 
         loss.mean.backward()
-        grad_norm = torch.nn.utils.clip_grad_norm_(optimizer.params(), 5.0)
+        grad_norm = torch.nn.utils.clip_grad_norm_(self.ll_model.parameters(), 5.0)
         grad_norm = Metric('grad_norm', grad_norm * batch.num_samples, batch.num_samples)
         optimizer.step()
         metrics += Metrics(grad_norm, loss)
@@ -94,7 +103,7 @@ class Trainer:
         if not out_file:
             out_file = dataset.predicted_file['train']
         with Path(out_file).open('w', encoding='utf8') as fout:
-            for word in enumerate(wordset):
+            for word in wordset:
                 fout.write(word + ':' + self.ll_model.segment(word) + '\n')
 
     def evaluate(self, dataset):

@@ -9,15 +9,14 @@ EN_ALPHABET = 'abcdefghijklmnopqrstuvwxyz'
 
 
 # TODO have to deal with pruner -- saving pruner here?
-@use_arguments_as_properties('sibling', 'compounding', 'lang')
+@use_arguments_as_properties('sibling', 'compounding', 'lang', 'use_word_vectors')
 class FeatureExtractor:
 
-    def __init__(self, dataset, wv):
-        self.wv = wv
+    def __init__(self, dataset):
         self.dataset = dataset
         self.pruner = None
 
-    @cache(persist=False)
+    @cache(persist=False, full=True)
     def get_raw_features(self, child, candidate):
         parent, type_ = candidate
         pair = Pair(child, *candidate)
@@ -36,7 +35,7 @@ class FeatureExtractor:
                 features['MAXCOS_%d' % (int(max_cos * 10))] = 1.0
         else:
             if type_ != 'COM_LEFT' and type_ != 'COM_RIGHT':
-                cos = self.wv.get_similarity(child, parent)
+                cos = self.dataset.wv.get_similarity(child, parent)
                 features['COS'] = cos
                 if parent in self.dataset.word_cnt:
                     features['CNT'] = math.log(self.dataset.word_cnt[parent])
@@ -68,24 +67,23 @@ class FeatureExtractor:
             elif type_ == 'COM_LEFT':
                 parent, aux = parent
                 features['HEAD_CNT'] = math.log(self.dataset.word_cnt[parent])
-                features['HEAD_COS'] = self.wv.get_similarity(child, parent)
+                features['HEAD_COS'] = self.dataset.wv.get_similarity(child, parent)
                 features['AUX_CNT'] = math.log(self.dataset.word_cnt[aux])
-                features['AUX_COS'] = self.wv.get_similarity(child, aux)
+                features['AUX_COS'] = self.dataset.wv.get_similarity(child, aux)
             elif type_ == 'COM_RIGHT' or type_ == 'HYPHEN':
                 aux, parent = parent
                 features['HEAD_CNT'] = math.log(self.dataset.word_cnt[parent])
-                features['HEAD_COS'] = self.wv.get_similarity(child, parent)
+                features['HEAD_COS'] = self.dataset.wv.get_similarity(child, parent)
                 features['AUX_CNT'] = math.log(self.dataset.word_cnt[aux])
-                features['AUX_COS'] = self.wv.get_similarity(child, aux)
+                features['AUX_COS'] = self.dataset.wv.get_similarity(child, aux)
             else:
                 raise NotImplementedError('no such type %s' % (type_))
-        self.features_cache[(child, candidate)] = features
         return features
 
     @cache(persist=False, full=True)
     def _get_max_cos(self, child):
         if self.use_word_vectors:
-            max_cos = max([-2] + [self.wv.get_similarity(child, parent)
+            max_cos = max([-2] + [self.dataset.wv.get_similarity(child, parent)
                                   for parent, type_ in self.get_candidates(child) if type_ != 'STOP'])  # -2 as exit code
             return max_cos
         else:
@@ -151,7 +149,7 @@ class FeatureExtractor:
                         for char in EN_ALPHABET:
                             if char == parent[-1]: continue
                             new_parent = parent[:-1] + char
-                            if self.wv.get_similarity(new_parent, word) > 0.2:
+                            if self.dataset.wv.get_similarity(new_parent, word) > 0.2:
                                 pair = Pair(word, new_parent, 'MODIFY')
                                 suf, trans = pair.get_affix_and_transformation()
                                 if not self.pruner or suf not in self.pruner['suf']:
