@@ -6,9 +6,11 @@ from pathlib import Path
 import enlighten
 import torch
 from torch.optim import Adam
+from tqdm import tqdm
 
 from arglib import use_arguments_as_properties
 from dev_misc import Metric, Metrics, clear_cache, get_tensor, log_pp
+from mf.models.ILP import ILP
 from mf.utils.evaluate import evaluate
 
 _manager = enlighten.Manager()
@@ -17,8 +19,12 @@ _manager = enlighten.Manager()
 @use_arguments_as_properties('max_epoch', 'learning_rate', 'iteration', 'ILP', 'reg_hyper', 'check_interval', 'log_dir')
 class Trainer:
 
-    def __init__(self, ll_model):
+    def __init__(self, ll_model, dataset, feature_ext):
         self.ll_model = ll_model
+        self.dataset = dataset
+        self.feature_ext = feature_ext
+        if self.ILP:
+            self.ilp = ILP(self.ll_model, feature_ext, dataset)
         self._pbar = _manager.counter(desc='epoch', total=self.max_epoch)
 
     @property
@@ -32,16 +38,20 @@ class Trainer:
     def _ended_iteration(self):
         return self._pbar.count >= self.max_epoch
 
-    def train(self, dataset):
+    def train(self):
         if self.ILP:
             for i in range(self.iteration):
-                self._train_one_iteration(dataset)
+                self._train_one_iteration()
+                self.ilp.run()
+                self.ilp.parse()
+                self.ilp.evaluate()
+                self.feature_ext.update_pruner(self.ilp.pruner)
         else:
-            self._train_one_iteration(dataset)
+            self._train_one_iteration()
 
-    def _train_one_iteration(self, dataset):
+    def _train_one_iteration(self):
         # NOTE Get a batch. This batch would be the same across all epochs.
-        batch = dataset.get_batch()
+        batch = self.dataset.get_batch()
         # Clear cache first.
         clear_cache()
         # First pass to gather dataset-specific information and prepare weights.
@@ -65,7 +75,7 @@ class Trainer:
 
             if should_stop:
                 break
-        self.save(dataset)
+        self.save()
 
     def _train_one_epoch(self, batch, optimizer):
         """Each epoch is actually just one step since no minibatching is used."""
@@ -91,13 +101,13 @@ class Trainer:
         log_pp(metrics.get_table(title=f'Epoch = {self.epoch}'))
         metrics.clear()
 
-    def save(self, dataset):
+    def save(self):
         torch.save(self.ll_model.state_dict(), f'{self.log_dir}/saved.latest')
         # self.weights = w.get_value()
         # write weights to log
         self.write_weights()
-        self.write_segments_to_file(dataset)
-        p, r, f = self.evaluate(dataset)
+        self.write_segments_to_file()
+        p, r, f = self.evaluate()
         print(p, r, f)
 
     def write_weights(self):
@@ -107,26 +117,16 @@ class Trainer:
                 tmp = '%s\t%f\n' % (self.ll_model.index2feature[i], v)
                 fout.write(tmp)
 
-    def write_segments_to_file(self, dataset, wordset=None, out_file=None):
+    def write_segments_to_file(self, wordset=None, out_file=None):
         if not wordset:
-            wordset = set(dataset.gold_segs.keys())
+            wordset = set(self.dataset.gold_segs.keys())
         if not out_file:
-            out_file = dataset.predicted_file['train']
+            out_file = self.dataset.predicted_file['train']
         with Path(out_file).open('w', encoding='utf8') as fout:
-            for word in sorted(wordset):
+            for word in tqdm(sorted(wordset)):
                 fout.write(word + ':' + self.ll_model.segment(word) + '\n')
 
-    def evaluate(self, dataset):
-        p, r, f = evaluate(dataset.gold_segs_file, dataset.predicted_file['train'], quiet=True)
+    def evaluate(self):
+        p, r, f = evaluate(self.dataset.gold_segs_file, self.dataset.predicted_file['train'], quiet=True)
         logging.info(f'MC: p/r/f = {p}/{r}/{f}')
         return (p, r, f)
-
-    def update_pruner(self, pruner):
-        # TODO for ILP
-        self.pruner = pruner
-        for p in pruner['pre']:
-            if p in self.mc_model.prefixes:
-                self.mc_model.prefixes.remove(p)
-        for s in pruner['suf']:
-            if s in self.mc_model.suffixes:
-                self.mc_model.suffixes.remove(s)

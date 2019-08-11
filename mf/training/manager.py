@@ -13,13 +13,13 @@ class Manager:
         self.data_preparer = DataPreparer()
         self.feature_ext = FeatureExtractor(self.data_preparer)
         self.ll_model = LogLinearModel(self.feature_ext)
-        self.trainer = Trainer(self.ll_model)
+        self.trainer = Trainer(self.ll_model, self.data_preparer, self.feature_ext)
 
     def train(self):  # , reread=True):
         # if reread:
         #     self.data_preparer.read_all_data()
         # if not self.supervised:
-        self.trainer.train(self.data_preparer)
+        self.trainer.train()
         # NOTE Commented out supervised mode.
         # else:
         #     raise NotImplementedError('Not implemented. Should not have come here.')

@@ -214,3 +214,12 @@ class FeatureExtractor:
                 neighbors.add(word[1] + word[0] + word[2: n - 3] + word[n - 2] + word[n - 3] + word[n - 1])
 
         return neighbors
+
+    def update_pruner(self, pruner):
+        self.pruner = pruner
+        for p in pruner['pre']:
+            if p in self.dataset.prefixes:
+                self.dataset.prefixes.remove(p)
+        for s in pruner['suf']:
+            if s in self.dataset.suffixes:
+                self.dataset.suffixes.remove(s)

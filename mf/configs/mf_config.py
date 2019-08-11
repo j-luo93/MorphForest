@@ -9,6 +9,11 @@ class EngToy:
 
 
 @register
+class EngToyILP(EngToy):
+    ILP: bool = True
+
+
+@register
 class Eng:
     lang: str = 'en'
     data_path: str = 'data/en/'
@@ -20,3 +25,10 @@ class Eng:
 class EngWithWordVectors(Eng):
     use_word_vectors: bool = True
     strict_wv: bool = False
+
+
+@register
+class EngWithWordVectorsILP(EngWithWordVectors):
+    ILP: bool = True
+    top_affixes: int = 500
+    top_words: int = 10000
