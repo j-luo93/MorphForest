@@ -238,7 +238,7 @@ class ILP(object):
         while not path.is_ended():
             child = path.get_fringe_word()
             parts = child.split("'")
-            if len(parts) == 2 and len(parts[0]) > 0 and self.base.lang == 'eng':
+            if len(parts) == 2 and len(parts[0]) > 0 and self.base.lang == 'en':
                 path.expand(child, parts[0], 'APOSTR')
             else:
                 parts = child.split('-')

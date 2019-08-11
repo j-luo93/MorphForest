@@ -57,11 +57,14 @@ class Trainer:
         # Main body.
         metrics = Metrics()
         while not self._ended_iteration():
-            epoch_metrics = self._train_one_epoch(batch, optimizer)
+            epoch_metrics, should_stop = self._train_one_epoch(batch, optimizer)
             metrics += epoch_metrics
             self._pbar.update()
             if self.epoch % self.check_interval == 0:
                 self._do_check(metrics)
+
+            if should_stop:
+                break
         self.save(dataset)
 
     def _train_one_epoch(self, batch, optimizer):
@@ -73,18 +76,20 @@ class Trainer:
 
         # Forward pass. I chose to not use `weight_decay` provided by `torch.optim` to get a more explicit control of l2 regularization.
         metrics = self.ll_model(batch)
-        loss = metrics.nll.mean + self.reg_hyper * metrics.reg_l2.mean
-        loss = Metric('loss', loss * batch.num_samples, batch.num_samples)
+        loss = metrics.nll.total + self.reg_hyper * metrics.reg_l2.total
+        loss = Metric('loss', loss, 1.0)
 
-        loss.mean.backward()
-        grad_norm = torch.nn.utils.clip_grad_norm_(self.ll_model.parameters(), 5.0)
-        grad_norm = Metric('grad_norm', grad_norm * batch.num_samples, batch.num_samples)
+        loss.total.backward()
+        grad_norm = self.ll_model.weights.grad.norm(2)
+        grad_norm = Metric('grad_norm', grad_norm, 1.0)
         optimizer.step()
         metrics += Metrics(grad_norm, loss)
-        return metrics
+        should_stop = grad_norm.total < 1.0
+        return metrics, should_stop
 
     def _do_check(self, metrics):
         log_pp(metrics.get_table(title=f'Epoch = {self.epoch}'))
+        metrics.clear()
 
     def save(self, dataset):
         torch.save(self.ll_model.state_dict(), f'{self.log_dir}/saved.latest')
@@ -108,7 +113,7 @@ class Trainer:
         if not out_file:
             out_file = dataset.predicted_file['train']
         with Path(out_file).open('w', encoding='utf8') as fout:
-            for word in wordset:
+            for word in sorted(wordset):
                 fout.write(word + ':' + self.ll_model.segment(word) + '\n')
 
     def evaluate(self, dataset):

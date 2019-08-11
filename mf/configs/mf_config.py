@@ -12,6 +12,8 @@ class EngToy:
 class Eng:
     lang: str = 'en'
     data_path: str = 'data/en/'
+    top_affixes: int = 100
+    top_words: int = 5000
 
 
 @register

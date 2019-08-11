@@ -96,15 +96,12 @@ class DataPreparer:
         if hasattr(self, 'gold_affix_file'):
             raise NotImplementedError('Support for gold affixes not implemented.')
         else:
-            # TODO isn't this wrong?
             suf_cnt, pre_cnt = Counter(), Counter()
             for word in self.train_set:
                 for pos in range(1, len(word)):
                     left, right = word[:pos], word[pos:]
-                    suf_cnt[right] += 1
-                    pre_cnt[left] += 1
-                    # if left in self.word_cnt: suf_cnt[right] += 1
-                    # if right in self.word_cnt: pre_cnt[left] += 1
+                    if left in self.word_cnt: suf_cnt[right] += 1
+                    if right in self.word_cnt: pre_cnt[left] += 1
             suf_cnt = sorted(suf_cnt.items(), key=lambda x: x[1], reverse=True)
             pre_cnt = sorted(pre_cnt.items(), key=lambda x: x[1], reverse=True)
             self.suffixes = set([suf for suf, cnt in suf_cnt[:self.top_affixes]])

@@ -6,18 +6,22 @@ import random
 import torch
 
 from arglib import parser
-from dev_misc import Map, create_logger
+from dev_misc import Map, create_logger, log_pp
 from mf.configs import registry
 from mf.training.manager import Manager
 
 # from ILP import ILP as ILP
+
 # from model import MC
+
+
+from pprint import pformat
 
 
 def parse_args():
     parser.add_argument('--lang', dtype=str, help='language')
     parser.add_argument('--gpu', '-g', dtype=str, help='gpu to use')
-    parser.add_argument('--top_affixes', '-A', dtype=int, help='top K frequent affixes to use')
+    parser.add_argument('--top_affixes', '-A', default=100, dtype=int, help='top K frequent affixes to use')
     parser.add_argument('--top_words', '-W', default=5000, dtype=int, help='top K words to use')
     parser.add_argument('--compounding', default=False, dtype=bool, help='use compounding, default False')
     parser.add_argument('--sibling', default=False, dtype=bool, help='use sibling feature, default False')
@@ -54,6 +58,7 @@ def parse_args():
     if args.gpu is not None:
         torch.cuda.set_device(int(args.gpu))  # HACK
         os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+
     return args
 
 
@@ -66,6 +71,8 @@ if __name__ == "__main__":
     args = parse_args()
 
     create_logger(args.log_dir + '/log')
+
+    log_pp(pformat(args))
 
     if args.supervised:
         assert not args.ILP and not args.load

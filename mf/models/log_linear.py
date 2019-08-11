@@ -116,9 +116,9 @@ class LogLinearModel(nn.Module):
         den = ((self.denominator @ self.weights.view(-1, 1)).squeeze(dim=1).exp() * self.cnt_den).view(N, -1)
         num = ((self.numerator @ self.weights.view(-1, 1)).squeeze(dim=1).exp() * self.cnt_num).view(N, -1)
         nll = -(num.sum(dim=1) / den.sum(dim=1)).log().sum()
-        nll = Metric('nll', nll, batch.num_samples)
+        nll = Metric('nll', nll, 1.0)
         reg_l2 = (self.weights ** 2).sum()
-        reg_l2 = Metric('reg_l2', reg_l2, 1.0)  # batch.num_samples)
+        reg_l2 = Metric('reg_l2', reg_l2, 1.0)
         return Metrics(nll, reg_l2)
 
     # populate coordinates with features, expanding feature set along the way
@@ -181,7 +181,7 @@ class LogLinearModel(nn.Module):
         while not path.is_ended():
             child = path.get_fringe_word()
             parts = child.split("'")
-            if len(parts) == 2 and len(parts[0]) > 0 and self.lang == 'eng':
+            if len(parts) == 2 and len(parts[0]) > 0 and self.lang == 'en':
                 path.expand(child, parts[0], 'APOSTR')
             else:
                 parts = child.split('-')
