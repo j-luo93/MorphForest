@@ -35,6 +35,10 @@ def parse_args():
     parser.add_argument('--strict_wv', default=True, dtype=bool, help='strict wv mode that does not allow oov')
     parser.add_argument('--inductive', default=True, dtype=bool, help='inductive mode')
     parser.add_argument('--use_word_vectors', default=False, dtype=bool, help='use word vectors')
+    parser.add_argument('--use_transformation', default=False, dtype=bool, help='use transformations')
+    parser.add_argument('--strict_affix', default=True, dtype=bool,
+                        help='use strict affix which means that you only count an affix if there remaining part is in vocabulary')
+    parser.add_argument('--do_evaluate', default=True, dtype=bool, help='evaluate the model')
     parser.add_argument('--load', '-l', help='file to load the model from')
     parser.add_argument('--save', '-s', help='file to save the model to')
     parser.add_argument('--iteration', default=5, dtype=int, help='number of ILP iterations')

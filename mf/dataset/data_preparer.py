@@ -8,7 +8,7 @@ from dev_misc import Map, log_this
 from .word_vectors import DummyWordVectors, WordVectors
 
 
-@use_arguments_as_properties('data_path', 'lang', 'log_dir', 'gold_affixes', 'top_affixes', 'top_words', 'inductive', 'use_word_vectors')
+@use_arguments_as_properties('data_path', 'lang', 'log_dir', 'gold_affixes', 'top_affixes', 'top_words', 'inductive', 'use_word_vectors', 'do_evaluate', 'strict_affix')
 class DataPreparer:
 
     def __init__(self):
@@ -23,7 +23,8 @@ class DataPreparer:
 
         self.read_wordlist()
         self.read_word_vectors()
-        self.read_gold_segs()
+        if self.do_evaluate:
+            self.read_gold_segs()
         self._add_top_words_from_wordlist()
         self.read_affixes()
         if self.inductive:
@@ -100,8 +101,10 @@ class DataPreparer:
             for word in self.train_set:
                 for pos in range(1, len(word)):
                     left, right = word[:pos], word[pos:]
-                    if left in self.word_cnt: suf_cnt[right] += 1
-                    if right in self.word_cnt: pre_cnt[left] += 1
+                    if (not self.strict_affix) or (left in self.word_cnt):
+                        suf_cnt[right] += 1
+                    if (not self.strict_affix) or (right in self.word_cnt):
+                        pre_cnt[left] += 1
             suf_cnt = sorted(suf_cnt.items(), key=lambda x: x[1], reverse=True)
             pre_cnt = sorted(pre_cnt.items(), key=lambda x: x[1], reverse=True)
             self.suffixes = set([suf for suf, cnt in suf_cnt[:self.top_affixes]])

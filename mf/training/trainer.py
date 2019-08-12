@@ -16,7 +16,7 @@ from mf.utils.evaluate import evaluate
 _manager = enlighten.Manager()
 
 
-@use_arguments_as_properties('max_epoch', 'learning_rate', 'iteration', 'ILP', 'reg_hyper', 'check_interval', 'log_dir')
+@use_arguments_as_properties('max_epoch', 'learning_rate', 'iteration', 'ILP', 'reg_hyper', 'check_interval', 'log_dir', 'do_evaluate')
 class Trainer:
 
     def __init__(self, ll_model, dataset, feature_ext):
@@ -43,8 +43,10 @@ class Trainer:
             for i in range(self.iteration):
                 self._train_one_iteration()
                 self.ilp.run()
-                self.ilp.parse()
-                self.ilp.evaluate()
+                wordset = None if self.do_evaluate else self.dataset.train_set
+                self.ilp.parse(wordset=wordset)
+                if self.do_evaluate:
+                    self.ilp.evaluate()
                 self.feature_ext.update_pruner(self.ilp.pruner)
         else:
             self._train_one_iteration()
@@ -106,9 +108,10 @@ class Trainer:
         # self.weights = w.get_value()
         # write weights to log
         self.write_weights()
-        self.write_segments_to_file()
-        p, r, f = self.evaluate()
-        print(p, r, f)
+        if self.do_evaluate:
+            self.write_segments_to_file()
+            p, r, f = self.evaluate()
+            logging.info(f'p/r/f = {p}/{r}/{f}')
 
     def write_weights(self):
         with Path(f'{self.log_dir}/MC.weights').open('w', encoding='utf8') as fout:

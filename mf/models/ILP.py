@@ -14,7 +14,7 @@ from mf.utils.pair import ChildParentPair as Pair
 from mf.utils.path import Path
 
 
-@use_arguments_as_properties('alpha', 'beta', 'lang', 'log_dir', 'top_affixes', 'top_words')
+@use_arguments_as_properties('alpha', 'beta', 'lang', 'log_dir', 'top_affixes', 'top_words', 'do_evaluate')
 class ILP(object):
 
     def __init__(self, ll_model, feature_ext, dataset):

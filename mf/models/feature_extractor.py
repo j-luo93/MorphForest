@@ -8,7 +8,7 @@ EN_ALPHABET = 'abcdefghijklmnopqrstuvwxyz'
 
 
 # TODO have to deal with pruner -- saving pruner here?
-@use_arguments_as_properties('sibling', 'compounding', 'lang', 'use_word_vectors')
+@use_arguments_as_properties('sibling', 'compounding', 'lang', 'use_word_vectors', 'use_transformation')
 class FeatureExtractor:
 
     def __init__(self, dataset):
@@ -136,8 +136,8 @@ class FeatureExtractor:
                 suf, _ = pair.get_affix_and_transformation()
                 if not self.pruner or suf not in self.pruner['suf']:
                     candidates.add((parent, 'SUFFIX'))
-                # NOTE Use rules of transformation for English.
-                if self.lang == 'en':
+                # NOTE Use rules of transformation for some languages.
+                if self.use_transformation:
                     if pos < len(word) - 1 and word[pos - 1] == word[pos]:
                         pair = Pair(word, parent, 'REPEAT')
                         suf, trans = pair.get_affix_and_transformation()

@@ -6,6 +6,7 @@ register = registry.register
 @register
 class EngToy:
     lang: str = 'eng.toy'
+    use_transformation: bool = True
 
 
 @register
@@ -32,3 +33,18 @@ class EngWithWordVectorsILP(EngWithWordVectors):
     ILP: bool = True
     top_affixes: int = 500
     top_words: int = 10000
+
+
+@register
+class EsILP:
+    lang: str = 'es'
+    ILP: bool = True
+    inductive: bool = False
+    data_path: str = 'data/es_tablet'
+    top_affixes: int = 500
+    top_words: int = 10000  # NOTE This would take all data
+    do_evaluate: bool = False
+    use_transformation: bool = True
+    strict_affix: bool = False
+    sibling: bool = True
+    compounding: bool = True
